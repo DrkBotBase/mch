@@ -6,4 +6,4 @@ const LikeSchema = new mongoose.Schema({
     ips: [{ type: String }]
 });
 
-module.exports = mongoose.model('MenuLike', LikeSchema);
+module.exports = mongoose.model('Mch_MenuLike', LikeSchema);

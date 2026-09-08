@@ -10,4 +10,4 @@ const subscriptionSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('MenuSubscription', subscriptionSchema);
+module.exports = mongoose.model('Mch_MenuSubscription', subscriptionSchema);

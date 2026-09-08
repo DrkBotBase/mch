@@ -10,4 +10,4 @@ const userSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('MenuUser', userSchema);
+module.exports = mongoose.model('Mch_MenuUser', userSchema);

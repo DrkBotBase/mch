@@ -25,4 +25,4 @@ const promotionSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('MenuPromotion', promotionSchema);
+module.exports = mongoose.model('Mch_MenuPromotion', promotionSchema);

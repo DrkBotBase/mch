@@ -40,4 +40,4 @@ const restaurantInfoSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-module.exports = mongoose.model('MenuRestaurantInfo', restaurantInfoSchema);
+module.exports = mongoose.model('Mch_MenuRestaurantInfo', restaurantInfoSchema);
