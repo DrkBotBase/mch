@@ -1,10 +1,10 @@
 {
-  "name": "Donde Junior Pedidos",
-  "short_name": "Donde Junior Pedidos",
-  "description": "La mejor comida rápida y combos para disfrutar desde casa.",
+  "name": "La Muralla China Pedidos",
+  "short_name": "La Muralla China Pedidos",
+  "description": "Comida China y almuerzos ejecutivos.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fdc40b",
+  "background_color": "#e21c1b",
   "theme_color": "#edebe4",
   "orientation": "portrait",
   "icons": [

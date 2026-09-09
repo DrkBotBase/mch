@@ -86,7 +86,7 @@ async function seedDefaultData() {
                     nombre: "MJFOOD",
                     direccion: "Solo Domicilios",
                     telefonoWhatsApp: "573046793853",
-                    logoUrl: "https://back.vinapp.co//store/1000x500245093-2025-08-06-16-47-12.webp",
+                    logoUrl: "",
                     extension: "mjfood",
                     orden: "900",
                     color: {
@@ -99,16 +99,16 @@ async function seedDefaultData() {
                     taxRate: 0
                 },
                 schedule: [
-                    {day: 0, open: "18:00", close: "23:30"},
-                    {day: 1, open: "18:00", close: "23:30"},
-                    {day: 2, open: "18:00", close: "23:30"},
-                    {day: 3, open: "closed", close: "closed"},
-                    {day: 4, open: "18:00", close: "23:30"},
-                    {day: 5, open: "18:00", close: "23:30"},
-                    {day: 6, open: "18:00", close: "23:30"}
+                    {day: 0, open: "10:00", close: "17:00"},
+                    {day: 1, open: "10:00", close: "17:00"},
+                    {day: 2, open: "10:00", close: "17:00"},
+                    {day: 3, open: "10:00", close: "17:00"},
+                    {day: 4, open: "10:00", close: "17:00"},
+                    {day: 5, open: "10:00", close: "17:00"},
+                    {day: 6, open: "10:00", close: "17:00"}
                 ],
                 shippingZones: [
-                    {name: "La Playa", price: 2000},
+                    {name: "La Playa", price: 3000},
                     {name: "Villa Campestre", price: 4000},
                     {name: "Ciudad Mayorquin", price: 7000}
                 ],
@@ -131,70 +131,7 @@ async function seedDefaultData() {
                     category: "⭐ Combos Imperdibles (Súper Ahorro)",
                     order: 1,
                     items: [
-                        { id: 101, name: "🍕 Combo Pizza Personal Pollo-Maíz + Coca-Cola 400ml", description: "Super pizza personal con pollo desmechado y maíz tierno + Coca-Cola 400ml.", basePrice: 20500, image: "", kitchenGuide: "Pizza Promo Pollo-Maíz, Coca-Cola 400ml stock", externalMapping: { id_product: 127259, additions: [] } },
-                        { id: 102, name: "🍕 Combo Pizza Personal 3 Carnes + Coca-Cola 400ml", description: "Super pizza personal de pollo, salami y jamón + Coca-Cola 400ml.", basePrice: 20500, image: "", kitchenGuide: "Pizza Promo 3 Carnes, Coca-Cola 400ml stock", externalMapping: { id_product: 127258, additions: [] } },
-                        { id: 104, name: "🍔 Hamburguesa de Carne, papas + gaseosa", description: "Deliciosa Hamburguesa de pan brioche con ajonjoli, queso americano con cebolla caramelizada, papas fritas y gaseosa", basePrice: 22000, image: "", kitchenGuide: "Hamburguesa promo, Coca-Cola 400ml stock", externalMapping: { id_product: 127254, additions: [] } },
-                        { id: 103, name: "🌭 Combo Hawaiano (Individual)", description: "Perro tradicional con salchicha premium gratinado, con piña caramelizada y jamón + Coca-Cola 400ml.", basePrice: 17500, image: "", kitchenGuide: "1x Perro Sencillo + Adicional de Piña ($10.500 al restaurante). NOTA: Sacar Coca-Cola 400ml de stock propio.", externalMapping: { id_product: 126333, additions: [{ id_product: 127268, name_product: "Adicional de jamon", valor: 2000 }, { id_product: 127276, name_product: "Adicional trocitos de piña", valor: 1000 }] } },
-                        { id: 105, name: "🌭 Combo Super Suizo", description: "Perro Salchicha Suiza Premium gratinado + Coca-Cola 400ml.", basePrice: 21000, image: "", kitchenGuide: "1x Perro Suizo ($17.000 al restaurante). NOTA: Sacar Coca-Cola 400ml de stock propio.", externalMapping: { id_product: 126338, additions: [] } },
-                        { id: 106, name: "🍟 Combo Ranchera Personal", description: "Salchipapa Ranchera + Jugo Hit Personal.", basePrice: 25000, image: "", kitchenGuide: "1x Salchipapa Sencilla + Adicional Salchicha Ranchera ($20.000 al restaurante). NOTA: Sacar Hit Personal de stock propio.", externalMapping: { id_product: 126291, additions: [{ id_product: 127266, name_product: "Adicional salchicha ranchera", valor: 5000 }] } },
-                        { id: 107, name: "🍕 Combo Pizza Pareja", description: "Pizza Medium Suiza (6 porciones) + Jugo Hit de 1Lt.", basePrice: 44000, image: "", kitchenGuide: "1x Pizza Medium Jamón + Adicional Piña ($38.000 al restaurante). NOTA: Sacar Jugo Hit 1L de stock propio.", externalMapping: { id_product: 126407, additions: [{ id_product: 127265, name_product: "Adicional salchicha suiza", valor: 6000 }] } },
-                        { id: 100, name: "🍟 Combo Especial x2", description: "Salchipapa Combinada + 2 Coca-Cola Personal.", basePrice: 38000, image: "", kitchenGuide: "1x Combinada x2 +  ($28.000 al restaurante). NOTA: Sacar Coca-Cola de stock propio.", externalMapping: { id_product: 126378, additions: [] } }
-                    ]
-                },
-                {
-                    category: "🌭 Perros Calientes",
-                    order: 2,
-                    items: [
-                        { id: 1, name: "Perro Sencillo", description: "Perro tradicional, salchicha premium, gratinado de mozzarella, papitas chongo, queso costeño, salsas de la casa.", basePrice: 8500, image: "", kitchenGuide: "1x Perro Sencillo", externalMapping: { id_product: 126333, additions: [] } },
-                        { id: 2, name: "Perro a la Plancha", description: "Perro tradicional, salchicha premium, gratinado de mozzarella, papitas chongo, queso costeño, salsas de la casa.", basePrice: 8500, image: "", kitchenGuide: "1x Perro Plancha", externalMapping: { id_product: 126334, additions: [] } },
-                        { id: 3, name: "Perro Hawaiano (¡Exclusivo!)", description: "Perro tradicional gratinado con jugosos trocitos de piña caramelizada, jamón, papitas chongo queso costeño, salsas de la casa.", basePrice: 14000, image: "", kitchenGuide: "1x Perro Sencillo + ad, Piña Caramelizada - jamón. NOTA: Pagas $12.500", externalMapping: { id_product: 126333, additions: [{ id_product: 127268, name_product: "Adicional de jamon", valor: 2000 }, { id_product: 127276, name_product: "Adicional trocitos de piña", valor: 1000 }] } },
-                        { id: 4, name: "Perro Suizo", description: "Delicioso perro con salchicha suiza gigante, gratinado de mozzarella, papas chongo, queso costeño y salsas de la casa.", basePrice: 17000, image: "", kitchenGuide: "1x Perro Suizo", externalMapping: { id_product: 126338, additions: [] } },
-                        { id: 5, name: "Perro Mini Suizo", description: "La versión ideal para calmar el antojo. 1/2 salchicha suiza, gratinado de mozzarella, papas chongo, queso costeño, salsas de la casa.", basePrice: 13000, image: "", kitchenGuide: "1x Perro Mini Suizo", externalMapping: { id_product: 126346, additions: [] } }
-                    ]
-                },
-                {
-                    category: "🍟 Salchipapas",
-                    order: 3,
-                    items: [
-                        { id: 20, name: "Salchipapa Sencilla", description: "Papas fritas con abundante salchicha tradicional, lechuga, papitas chongo, queso costeño, salsas de la casa.", basePrice: 15000, image: "", kitchenGuide: "1x Salchipapa Sencilla", externalMapping: { id_product: 126291, additions: [] } },
-                        { id: 21, name: "Salchipapa Suiza Especial", description: "Papas fritas con abundante salchicha tradicional, salchicha suiza premium, lechuga, papitas chongo, queso costeño, salsas de la casa.", basePrice: 22000, image: "", kitchenGuide: "1x Salchipapa Sencilla + Adicional de Salchicha Suiza ($6.000).", externalMapping: { id_product: 126291, additions: [{ id_product: 127265, name_product: "Adicional salchicha suiza", valor: 6000 }] } },
-                        { id: 22, name: "Salchipapa Ranchera", description: "Papas fritas con abundante salchicha tradicional, salchicha ranchera premium, lechuga, queso costeño, papitas chongo, salsas de la casa.", basePrice: 22000, image: "", kitchenGuide: "1x Salchipapa Sencilla + Adicional de Salchicha Ranchera ($5.000). NOTA: Al local le pagas $20.000 y ganas $1.000 directos.", externalMapping: { id_product: 126291, additions: [{ id_product: 127266, name_product: "Adicional salchicha ranchera", valor: 5000 }] } },
-                        { id: 23, name: "Salchipapa Especial", description: "Una montaña de sabor: Papas con salchicha tradicional, carne, pollo, cerdo, chorizo, butifarra, maíz tierno, lechuga, gratinado de mozzarella, salsas de la casa.", basePrice: 35000, image: "", kitchenGuide: "1x Salchipapa Especial", externalMapping: { id_product: 126301, additions: [] } },
-                        { id: 24, name: "Combinada para 2 Personas", description: "Bollo, papitas fritas, papa chongo, lechuga, queso costeño, pollo, salchicha suiza, chorizo, butifarra, salchicha manguera tradicional, gratinada con mozzarella y cebolla crispy.", basePrice: 28000, image: "", kitchenGuide: "1x Combinada para 2", externalMapping: { id_product: 126378, additions: [] } }
-                    ]
-                },
-                {
-                    category: "🍔 Hamburguesas",
-                    order: 4,
-                    items: [
-                        { id: 30, name: "Hamburguesa de Pollo", description: "Pan suave con ajonjolí, jugoso filete de pollo seleccionado, lechuga, tomate fresco, queso y salsas artesanales.", basePrice: 16000, image: "", kitchenGuide: "1x Hamburguesa de Pollo", externalMapping: { id_product: 126369, additions: [] } },
-                        { id: 31, name: "Hamburguesa de Carne + papitas fritas", description: "Pan brioche con ajonjoli, queso americano con cebolla caramelizada, acompanada de papas fritas", basePrice: 20000, image: "", kitchenGuide: "1x Hamburguesa Promo", externalMapping: { id_product: 127254, additions: [] } },
-                        { id: 32, name: "Hamburguesa Mixta (Carne + Pollo)", description: "El doble de sabor. Doble proteína con carne y filete de pollo, gratinada con queso cheddar, lechuga y tomate, salsa de la casa.", basePrice: 20000, image: "", kitchenGuide: "1x Hamburguesa Carne-Pollo", externalMapping: { id_product: 126371, additions: [] } }
-                    ]
-                },
-                {
-                    category: "🍕 Pizzas Exclusivas",
-                    order: 5,
-                    items: [
-                        { id: 40, name: "Pizza Junior Jamón", description: "Ideal para una persona, masa artesanal crujiente, base de salsa de tomate italiana, mucho queso derretido y tiras de jamón premium.", basePrice: 20000, image: "", kitchenGuide: "1x Pizza Personal de Jamón", externalMapping: { id_product: 126391, additions: [] } },
-                        { id: 41, name: "Pizza Junior Pizza-Perro", description: "La combinación más loca y deliciosa de la casa: salsa de tomate, jamón picado, mozzarella derretido y coronada con papita chongo crujiente.", basePrice: 22000, image: "", kitchenGuide: "1x Pizza Personal de Jamón + Adicional de Papa Chongo", externalMapping: { id_product: 126394, additions: [] } },
-                        { id: 42, name: "Pizza Junior Hawaiana", description: "La favorita agridulce: jamón seleccionado y abundantes trozos de piña caramelizada en almíbar de la casa con queso fundido.", basePrice: 23000, image: "", kitchenGuide: "1x Pizza Personal Jamón + Adicional Piña ($2.000). NOTA: Ahorras $1.000 en el pedido.", externalMapping: { id_product: 126391, additions: [{ id_product: 127275, name_product: "Adicional piña pizza junior", valor: 2000 }] } },
-                        { id: 43, name: "Pizza Medium de Jamón", description: "Pizza de tamaño mediano perfecta para compartir, cargada de queso mozzarella y jamón.", basePrice: 34000, image: "", kitchenGuide: "1x Pizza Medium de Jamón", externalMapping: { id_product: 126407, additions: [] } },
-                        { id: 44, name: "Pizza Medium Hawaiana", description: "Pizzq Medium con la combinación perfecta de piña caramelizada, jamón y queso fundido.", basePrice: 40000, image: "", kitchenGuide: "1x Pizza Medium Jamón + Adicional Piña ($4.000). NOTA: Ganas $2.000 directos.", externalMapping: { id_product: 126407, additions: [{ id_product: 127278, name_product: "Adicional piña pizza medium", valor: 4000 }] } },
-                        { id: 45, name: "Pizza Medium Suiza", description: "Pizza crujiente cubierta de salsa de la casa, queso mozzarella fundido y salchicha suiza premium.", basePrice: 45000, image: "", kitchenGuide: "1x Pizza Medium Suiza", externalMapping: { id_product: 126407, additions: [{ id_product: 127265, name_product: "Adicional salchicha suiza", valor: 6000 }] } },
-                        { id: 46, name: "Pizza XL Jamón", description: "Tamaño gigante familiar para disfrutar en casa. Cargada de jamón y queso mozzarella de punta a punta.", basePrice: 51000, image: "", kitchenGuide: "1x Pizza Familiar de Jamón", externalMapping: { id_product: 126423, additions: [] } },
-                        { id: 47, name: "Pizza XL Hawaiana", description: "Tamaño gigante familiar para los amantes de la piña dulce caramelizada combinada con jamón premium y queso mozzarella.", basePrice: 58000, image: "", kitchenGuide: "1x Pizza Familiar Jamón + Adicional Piña ($5.000). NOTA: Ganas $2.000 directos.", externalMapping: { id_product: 126423, additions: [{ id_product: 127280, name_product: "Adicional piña pizza XL", valor: 5000 }] } }
-                    ]
-                },
-                {
-                    category: "🥤 Bebidas y Adicionales",
-                    order: 6,
-                    items: [
-                        { id: 50, name: "Coca-Cola 400ml", description: "Gaseosa refrescante ideal para acompañar tu combo.", basePrice: 4000, image: "", kitchenGuide: "NO PEDIR AL LOCAL. Sacar de stock propio (Compra tienda local)." },
-                        { id: 51, name: "Coca-Cola 1.5Lt", description: "Ideal para compartir en familia o amigos.", basePrice: 8000, image: "", kitchenGuide: "NO PEDIR AL LOCAL. Sacar de stock propio (Compra tienda local)." },
-                        { id: 52, name: "Jugo Hit 1Lt (Varios Sabores)", description: "Delicioso jugo de fruta de 1 litro para compartir.", basePrice: 6000, image: "", kitchenGuide: "NO PEDIR AL LOCAL. Sacar de stock propio (Compra tienda local)." },
-                        { id: 53, name: "Jugo Hit Personal", description: "Jugo de frutas personal en botella, sabores surtidos bien fríos.", basePrice: 4000, image: "", kitchenGuide: "NO PEDIR AL LOCAL. Sacar de stock propio (Compra tienda local)." },
-                        { id: 54, name: "Porción de Papas Extra", description: "Más papitas crujientes para tu pedido.", basePrice: 6000, image: "", kitchenGuide: "1x Porción de Papas." }
+                        { id: 101, name: "Product Example", description: "test product", basePrice: 0, image: "", kitchenGuide: "", externalMapping: { id_product: 0, additions: [] } }
                     ]
                 }
             ];
@@ -248,7 +185,7 @@ app.get('/', async (req, res) => {
 
         let meta = {
             title: restaurantInfo.config.nombre,
-            description: "La mejor comida y combos para disfrutar desde casa.",
+            description: "Comida China y almuerzos ejecutivos.",
             image: restaurantInfo.config.logoUrl || ""
         };
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mjfood-cache-v5.3';
+const CACHE_NAME = 'mjfood-cache-v1.1';
 const rutaBase = '/';
 
 const ASSETS_TO_CACHE = [
@@ -8,9 +8,6 @@ const ASSETS_TO_CACHE = [
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/lucide@latest',
-  'https://back.vinapp.co//store/1000x500245093-2025-08-06-16-47-12.webp',
-  'https://back.vinapp.co//store/200x117240923-2025-08-06-16-47-12.webp',
-  'https://back.vinapp.co//store/1000x500259933-2025-08-06-16-48-37.webp'
 ];
 
 self.addEventListener('install', (event) => {
