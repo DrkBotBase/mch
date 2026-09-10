@@ -221,7 +221,7 @@ app.get('/', async (req, res) => {
         console.error(error);
         const meta = {
             title: "MJFOOD",
-            description: "La mejor comida rápida y combos para disfrutar desde casa.",
+            description: "Menú digital.",
             image: ""
         };
         res.render('index', { 
@@ -479,7 +479,7 @@ app.post('/api/notifications/send', isAuthenticated, async (req, res) => {
     const payload = JSON.stringify({
         title: title || 'Novedades en MJFOOD',
         body: body || '¡Revisa nuestro nuevo menú!',
-        icon: 'https://back.vinapp.co//store/1000x500245093-2025-08-06-16-47-12.webp',
+        icon: 'https://res.cloudinary.com/ddyhmqsas/image/upload/v1788964377/mjfood-menu/mndvl6llul4vryotbaa6.png',
         image: image || null,
         data: { url: url || '/' }
     });
@@ -562,7 +562,7 @@ app.post('/api/orders', async (req, res) => {
             { returnDocument: 'after', upsert: true }
         );
 
-        const shortId = `mj${counter.seq}`;
+        const shortId = `mc${counter.seq}`;
         const newOrder = new Order({ ...req.body, shortId });
         await newOrder.save();
 
@@ -741,7 +741,7 @@ app.get('/api/orders/:id', async (req, res) => {
         const queryId = req.params.id;
         let order;
 
-        if (queryId.startsWith('mj')) {
+        if (queryId.startsWith('mc')) {
             order = await Order.findOne({ shortId: queryId });
         } else {
             if (mongoose.Types.ObjectId.isValid(queryId)) {

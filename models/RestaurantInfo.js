@@ -5,7 +5,7 @@ const restaurantInfoSchema = new mongoose.Schema({
         nombre: { type: String, default: 'MJFOOD' },
         direccion: { type: String, default: 'Solo Domicilios' },
         telefonoWhatsApp: { type: String, default: '573046793853' },
-        logoUrl: { type: String, default: 'https://back.vinapp.co//store/1000x500245093-2025-08-06-16-47-12.webp' },
+        logoUrl: { type: String, default: 'https://raw.githubusercontent.com/DrkBotBase/mjfood/refs/heads/master/public/assets/banner.jpg' },
         extension: { type: String, default: 'mjfood' },
         orden: { type: String, default: '900' },
         color: {
