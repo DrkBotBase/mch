@@ -422,7 +422,18 @@ app.get('/api/admin/clients', isAuthenticated, async (req, res) => {
 
 app.put('/api/admin/orders/:id', isAuthenticated, async (req, res) => {
     try {
-        await Order.findByIdAndUpdate(req.params.id, { status: req.body.status });
+        const { status, shippingCost } = req.body;
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ success: false });
+
+        const updateData = {};
+        if (status) updateData.status = status;
+        if (shippingCost !== undefined) {
+            updateData.shippingCost = parseFloat(shippingCost);
+            updateData.total = order.subtotal + parseFloat(shippingCost);
+        }
+
+        await Order.findByIdAndUpdate(req.params.id, updateData);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false });

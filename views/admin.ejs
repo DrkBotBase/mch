@@ -584,7 +584,10 @@
                         </div>
                         <div class="mt-4 pt-2 border-t border-[var(--light-shadow)] space-y-1">
                             <div class="flex justify-between text-xs text-gray-400"><span>Subtotal</span><span>$${order.subtotal.toLocaleString()}</span></div>
-                            <div class="flex justify-between text-xs text-gray-400"><span>Envío</span><span>$${order.shippingCost.toLocaleString()}</span></div>
+                            <div class="flex justify-between text-xs text-gray-400">
+                                <span>Envío</span>
+                                <input type="number" id="edit-shipping-cost" value="${order.shippingCost}" class="neumorphic-input w-24 text-right p-1 rounded-lg text-sm">
+                            </div>
                             <div class="flex justify-between font-bold text-lg pt-1" style="color: var(--primary-color);"><span>TOTAL</span><span>$${order.total.toLocaleString()}</span></div>
                         </div>
                     </div>
@@ -597,6 +600,7 @@
                     ` : ''}
 
                     <div class="flex gap-4">
+                        <button onclick="saveOrderDetails('${order._id}');" class="flex-grow neumorphic-button py-3 rounded-xl font-bold" style="background-color: var(--primary-color); color: black;">Guardar Cambios</button>
                         <select onchange="updateOrderStatus('${order._id}', this.value); closeModal();" class="flex-grow neumorphic-input p-3 rounded-xl text-sm">
                             <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pendiente</option>
                             <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Completada</option>
@@ -610,6 +614,22 @@
             `;
             document.getElementById('modal-overlay').classList.remove('hidden');
             lucide.createIcons();
+        }
+
+        async function saveOrderDetails(id) {
+            const shippingCost = document.getElementById('edit-shipping-cost').value;
+            const res = await fetch(`/api/admin/orders/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ shippingCost })
+            });
+            if (res.ok) {
+                closeModal();
+                loadOrders();
+                showToast('Orden actualizada', 'success');
+            } else {
+                showToast('Error al actualizar la orden', 'error');
+            }
         }
 
         function getStatusClass(status) {
