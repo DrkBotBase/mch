@@ -647,7 +647,7 @@
             
             const transferDetails = document.getElementById('transferencia-details');
             const p = data.paymentInfo.transfer;
-            transferDetails.innerHTML = `<p class="font-bold text-color mb-1">Datos de Transferencia:</p><p class="text-color">Banco/Plataforma: ${p.bankName}</p><p class="text-color">Tipo: ${p.accountType}</p><p class="text-colo">Número celular: <strong>${p.accountNumber}</strong></p><p class="text-gray-300">Titular: ${p.accountHolder}</p>`;
+            transferDetails.innerHTML = `<p class="font-bold text-color mb-1">Datos de Transferencia:</p><p class="text-color">Banco/Plataforma: ${p.bankName}</p><p class="text-color">Tipo: ${p.accountType}</p><p class="text-color">Número celular: <strong>${p.accountNumber}</strong></p><p class="text-color">Titular: ${p.accountHolder}</p>`;
             
             checkRestaurantStatus();
             displayCurrentDate();
