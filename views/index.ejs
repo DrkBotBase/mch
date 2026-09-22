@@ -595,6 +595,13 @@
             shippingZoneSelect: document.getElementById('shipping-zone'), 
             confirmBtn: document.getElementById('confirm-order-btn') 
         };
+
+        function getAllMenuItems(menu) {
+            return menu.flatMap(cat => [
+                ...(cat.items || []),
+                ...(cat.subcategories || []).flatMap(subcategory => subcategory.items || [])
+            ]);
+        }
         
         function getCurrentZoneInfo() {
             const select = cartModal.shippingZoneSelect;
@@ -654,6 +661,7 @@
             
             data.menu.forEach(cat => {
                 cat.items.sort((a, b) => a.id - b.id);
+                (cat.subcategories || []).forEach(subcategory => subcategory.items.sort((a, b) => a.id - b.id));
             });
 
             renderPromotions();
@@ -665,13 +673,13 @@
             const urlParams = new URLSearchParams(window.location.search);
             const productId = urlParams.get('item');
             if (productId) {
-                let item = data.menu.flatMap(cat => cat.items).find(i => String(i.id) === productId);
+                let item = getAllMenuItems(data.menu).find(i => String(i.id) === productId);
                 
                 if (!item && window.dbPromotions) {
                     const promo = window.dbPromotions.find(p => String(p._id) === productId || String(p.itemId) === productId);
                     if (promo) {
                         if (promo.itemId) {
-                            const baseItem = data.menu.flatMap(cat => cat.items).find(i => String(i.id) === String(promo.itemId));
+                            const baseItem = getAllMenuItems(data.menu).find(i => String(i.id) === String(promo.itemId));
                             if (baseItem) item = { ...baseItem, isPromo: true };
                         } else {
                             item = {
@@ -740,8 +748,7 @@
             container.innerHTML = '';
 
             staticPromos.forEach(promo => {
-                const baseItem = window.restaurantData.menu
-                    .flatMap(cat => cat.items)
+                const baseItem = getAllMenuItems(window.restaurantData.menu)
                     .find(i => i.id === promo.itemId);
 
                 if (baseItem) {
@@ -753,8 +760,7 @@
             dbPromos.forEach(promo => {
                 let item;
                 if (promo.itemId) {
-                    const baseItem = window.restaurantData.menu
-                        .flatMap(cat => cat.items)
+                    const baseItem = getAllMenuItems(window.restaurantData.menu)
                         .find(i => i.id === promo.itemId);
                     if (baseItem) {
                         item = { ...baseItem, isPromo: true };
@@ -837,22 +843,27 @@
             isOpen = checkIsOpen;
             updateStatusUI();
         }
+
+        function isCategoryAvailable(schedule) {
+            if (!schedule || schedule.length === 0) return true;
+            const now = new Date();
+            const currentTime = now.getHours() * 100 + now.getMinutes();
+            const today = schedule.find(item => item.day === now.getDay());
+            if (!today || today.open === 'closed') return false;
+            if (today.open === '24h') return true;
+            const openTime = parseInt(today.open.replace(':', ''), 10);
+            const closeTime = parseInt(today.close.replace(':', ''), 10);
+            if (Number.isNaN(openTime) || Number.isNaN(closeTime)) return true;
+            if (closeTime < openTime) return currentTime >= openTime || currentTime < closeTime;
+            return currentTime >= openTime && currentTime < closeTime;
+        }
         
         function updateStatusUI() {
             const statusDiv = document.getElementById('status-indicator');
-            const hasPromo = cart.some(item => item.isPromo);
-
-            if (isOpen) {
-                statusDiv.textContent = 'Abierto'; statusDiv.className = 'status-indicator status-open';
-                cartModal.confirmBtn.disabled = false; cartModal.confirmBtn.textContent = 'Enviar Pedido por WhatsApp';
-            } else if (hasPromo) {
-                statusDiv.textContent = 'Cerrado (Promo Activa)'; statusDiv.className = 'status-indicator status-open';
-                cartModal.confirmBtn.disabled = false; cartModal.confirmBtn.textContent = 'Enviar Pedido (Promoción)';
-            } else {
-                statusDiv.textContent = 'Cerrado'; statusDiv.className = 'status-indicator status-closed';
-                cartModal.confirmBtn.disabled = true; cartModal.confirmBtn.textContent = 'Cerrado por el momento';
-            }
-            // document.querySelectorAll('.select-item-btn').forEach(btn => { btn.style.display = isOpen ? 'block' : 'none'; });
+            statusDiv.textContent = 'Pedidos disponibles';
+            statusDiv.className = 'status-indicator status-open';
+            cartModal.confirmBtn.disabled = false;
+            cartModal.confirmBtn.textContent = 'Enviar Pedido por WhatsApp';
         }
         
         function displayCurrentDate() {
@@ -947,9 +958,6 @@
                           <input type="${inputType}" name="${inputName}" class="adicional-input w-5 h-5 accent-lime-500 flex-shrink-0 mt-0.5" 
                               data-name="${ad.name}" 
                               data-price="${ad.price}" 
-                              data-id-product="${ad.id_product || ''}" 
-                              data-id-companie="${ad.id_companie || ''}" 
-                              data-id-point="${ad.id_point || ''}" 
                               onchange="calculateItemPrice()">
                           <div class="flex-1">
                               <span class="text-sm font-medium text-color block">${ad.name}</span>
@@ -983,13 +991,7 @@
             
             const adicionales = [];
             document.querySelectorAll('.adicional-input:checked').forEach(cb => {
-                adicionales.push({
-                    name: cb.dataset.name,
-                    price: parseFloat(cb.dataset.price),
-                    id_product: cb.dataset.idProduct ? parseInt(cb.dataset.idProduct) : null,
-                    id_companie: cb.dataset.idCompanie ? parseInt(cb.dataset.idCompanie) : null,
-                    id_point: cb.dataset.idPoint ? parseInt(cb.dataset.idPoint) : null
-                });
+                adicionales.push({ name: cb.dataset.name, price: parseFloat(cb.dataset.price) });
             });
 
             const cartId = String(Date.now() + Math.random());
@@ -1085,53 +1087,37 @@
             return true;
         }
         
+        function renderProductList(items, categoryAvailable = true) {
+            const defaultImg = 'https://raw.githubusercontent.com/DrkBotBase/delivery/refs/heads/master/public/assets/images/menu_logo.png';
+            return (items || []).map(item => {
+                const priceText = item.basePrice === 0 ? 'Ver precios' : `$${item.basePrice.toLocaleString()}`;
+                return `<div class="neumorphic-pressed rounded-2xl p-4 flex items-center gap-4 hover:border hover:border-lime-500/20 transition-all">
+                    <div class="flex-grow"><h3 class="text-base md:text-lg font-bold text-color">${item.name}</h3><p class="text-xs text-gray-400 my-1 leading-relaxed">${item.description || ''}</p><p class="text-md md:text-lg font-black accent-text mt-2">${priceText}</p></div>
+                    <div class="flex-shrink-0"><button ${categoryAvailable ? '' : 'disabled'} class="select-item-btn neumorphic-button text-black font-bold p-3 rounded-xl ${categoryAvailable ? 'hover:scale-105 active:scale-95' : 'opacity-40 cursor-not-allowed'} transition flex items-center justify-center" style="background-color: var(--primary-color);" data-id="${item.id}" title="${categoryAvailable ? 'Agregar al pedido' : 'No disponible en este horario'}"><i data-lucide="${categoryAvailable ? 'plus' : 'lock'}" class="w-5 h-5"></i></button></div>
+                </div>`;
+            }).join('');
+        }
+
         function renderMenu() {
-    menuContainer.innerHTML = '';
-    
-    window.restaurantData.menu.forEach((cat, index) => {
-        const isFirst = index === 0;
-        const accordionClass = isFirst ? 
-            'category-accordion neumorphic-flat rounded-2xl active' : 
-            'category-accordion neumorphic-flat rounded-2xl';
-        
-        const accordion = document.createElement('div');
-        accordion.className = accordionClass;
-        accordion.innerHTML = `
-            <button class="category-header w-full p-6 flex justify-between items-center text-left focus:outline-none">
-                <h2 class="text-xl md:text-2xl font-black tracking-tight text-color">${cat.category}</h2>
-                <i data-lucide="chevron-down" class="chevron-icon w-6 h-6 text-color"></i>
-            </button>
-            <div class="category-content">
-                <div class="space-y-4">
-                ${cat.items.map(item => {
-                    const displayPrice = item.basePrice;
-                    const priceText = displayPrice === 0 ? 'Ver precios' : `$${displayPrice.toLocaleString()}`;
-                    const defaultImg = 'https://raw.githubusercontent.com/DrkBotBase/delivery/refs/heads/master/public/assets/images/menu_logo.png';
-                    const imgUrl = item.image || defaultImg;
-                    
-                    return `
-                        <div class="neumorphic-pressed rounded-2xl p-4 flex items-center gap-4 hover:border hover:border-lime-500/20 transition-all">
-                            <div class="flex-grow">
-                                <h3 class="text-base md:text-lg font-bold text-color">${item.name}</h3>
-                                <p class="text-xs text-gray-400 my-1 leading-relaxed">${item.description}</p>
-                                <p class="text-md md:text-lg font-black accent-text mt-2">${priceText}</p>
-                            </div>
-                            <div class="flex-shrink-0">
-                                <button class="select-item-btn neumorphic-button text-black font-bold p-3 rounded-xl hover:scale-105 active:scale-95 transition flex items-center justify-center" style="background-color: var(--primary-color);" data-id="${item.id}">
-                                    <i data-lucide="plus" class="w-5 h-5"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-                </div>
-            </div>
-        `;
-        menuContainer.appendChild(accordion);
-    });
-    lucide.createIcons();
-    updateStatusUI();
-  }
+            menuContainer.innerHTML = '';
+            window.restaurantData.menu.forEach((cat, index) => {
+                const accordion = document.createElement('div');
+                accordion.className = `category-accordion neumorphic-flat rounded-2xl${index === 0 ? ' active' : ''}`;
+                const directItems = cat.items || [];
+                const subcategories = cat.subcategories || [];
+                const categoryAvailable = isCategoryAvailable(cat.schedule);
+                const availabilityLabel = categoryAvailable ? '' : '<span class="text-xs font-bold text-amber-400 ml-2">No disponible ahora</span>';
+                accordion.innerHTML = `<button class="category-header w-full p-6 flex justify-between items-center text-left focus:outline-none"><h2 class="text-xl md:text-2xl font-black tracking-tight text-color">${cat.category}${availabilityLabel}</h2><i data-lucide="chevron-down" class="chevron-icon w-6 h-6 text-color"></i></button>
+                    <div class="category-content"><div class="space-y-6">
+                        ${!categoryAvailable ? '<div class="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-300">Esta categoría está visible, pero sus productos no están disponibles en este horario.</div>' : ''}
+                        ${directItems.length ? `<section><h3 class="text-sm font-bold uppercase tracking-wider accent-text mb-3">Productos</h3><div class="space-y-4">${renderProductList(directItems, categoryAvailable)}</div></section>` : ''}
+                        ${subcategories.map(sub => `<section class="border-t border-[var(--light-shadow)] pt-5"><h3 class="text-lg md:text-xl font-black text-color mb-3">${sub.name}</h3><div class="space-y-4">${renderProductList(sub.items, categoryAvailable)}</div></section>`).join('')}
+                    </div></div>`;
+                menuContainer.appendChild(accordion);
+            });
+            lucide.createIcons();
+            updateStatusUI();
+        }
      
         function populateShippingZones() {
             cartModal.shippingZoneSelect.innerHTML = `<option value="" disabled selected>¿Dónde te lo llevamos? *</option>`;
@@ -1331,10 +1317,9 @@
                 }
 
                 const selectBtn = e.target.closest('.select-item-btn');
-                if (selectBtn) {
+                if (selectBtn && !selectBtn.disabled) {
                     const itemId = parseInt(selectBtn.dataset.id);
-                    const item = window.restaurantData.menu
-                        .flatMap(cat => cat.items)
+                    const item = getAllMenuItems(window.restaurantData.menu)
                         .find(i => i.id === itemId);
 
                     if (item) openItemModal(item);

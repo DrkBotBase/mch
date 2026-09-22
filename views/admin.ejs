@@ -512,7 +512,6 @@
                                     <div class="text-[10px] text-gray-400 pl-4">
                                         + ${item.adicionales.map(a => {
                                             let info = `${a.name} ($${a.price.toLocaleString()})`;
-                                            if (a.id_product) info += ` <span class="text-blue-500">[ID:${a.id_product}${a.id_companie ? ` C:${a.id_companie}` : ''}${a.id_point ? ` P:${a.id_point}` : ''}]</span>`;
                                             return info;
                                         }).join(', ')}
                                     </div>
@@ -574,7 +573,6 @@
                                     <div class="text-[10px] text-gray-400 pl-4">
                                         ${item.adicionales.map(a => {
                                             let info = `+ ${a.name} ($${a.price.toLocaleString()})`;
-                                            if (a.id_product) info += ` <span class="text-blue-500 font-bold">[ID:${a.id_product}${a.id_companie ? ` C:${a.id_companie}` : ''}${a.id_point ? ` P:${a.id_point}` : ''}]</span>`;
                                             return info;
                                         }).join('<br>')}
                                     </div>
@@ -728,58 +726,49 @@
             renderMenu();
         }
 
+        function renderItemCard(cat, item, subcategory = null) {
+            const defaultImg = 'https://raw.githubusercontent.com/DrkBotBase/delivery/refs/heads/master/public/assets/images/menu_logo.png';
+            const imgUrl = item.image || defaultImg;
+            const subId = subcategory ? subcategory._id : '';
+            return `
+                <div class="neumorphic-input rounded-xl p-4 flex justify-between items-center ${!item.active ? 'opacity-50' : ''}">
+                    <div class="flex items-center gap-3">
+                        <img src="${imgUrl}" class="w-10 h-10 object-cover rounded-lg" onerror="this.src='${defaultImg}'">
+                        <div><p class="font-bold text-sm">${item.name}</p><p class="text-xs text-gray-400">$${(item.basePrice || 0).toLocaleString()}</p></div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="editItem('${cat._id}', '${item._id}', '${subId}')" class="p-2 neumorphic-button rounded-lg"><i data-lucide="edit-3" class="w-3 h-3"></i></button>
+                        <button onclick="deleteItem('${cat._id}', '${item._id}', '${subId}')" class="p-2 neumorphic-button rounded-lg text-red-500"><i data-lucide="x" class="w-3 h-3"></i></button>
+                    </div>
+                </div>`;
+        }
+
         function renderMenu() {
             const container = document.getElementById('categories-container');
             container.innerHTML = '';
-
             menuCategories.forEach(cat => {
+                const directItems = cat.items || [];
+                const subcategories = cat.subcategories || [];
                 const catEl = document.createElement('div');
                 catEl.className = 'neumorphic-flat rounded-2xl p-6';
                 catEl.innerHTML = `
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-bold flex items-center gap-2">
-                            ${cat.category}
-                            <span class="text-xs ${cat.active ? 'text-green-500' : 'text-red-500'} font-normal">
-                                (${cat.active ? 'Activa' : 'Desactivada'})
-                            </span>
-                        </h3>
-                        <div class="flex gap-2">
-                            <button onclick="openItemModal('${cat._id}')" class="text-sm neumorphic-button px-3 py-1 rounded-lg flex items-center gap-1">
-                                <i data-lucide="plus" class="w-3 h-3"></i> Item
-                            </button>
-                            <button onclick="editCategory('${cat._id}')" class="text-sm neumorphic-button px-3 py-1 rounded-lg">
-                                <i data-lucide="edit-2" class="w-3 h-3"></i>
-                            </button>
-                            <button onclick="deleteCategory('${cat._id}')" class="text-sm neumorphic-button px-3 py-1 rounded-lg text-red-500">
-                                <i data-lucide="trash-2" class="w-3 h-3"></i>
-                            </button>
+                    <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+                        <h3 class="text-xl font-bold flex items-center gap-2">${cat.category}<span class="text-xs ${cat.active ? 'text-green-500' : 'text-red-500'} font-normal">(${cat.active ? 'Activa' : 'Desactivada'})</span></h3>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="openItemModal('${cat._id}')" class="text-sm neumorphic-button px-3 py-1 rounded-lg flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Producto directo</button>
+                            <button onclick="openSubcategoryModal('${cat._id}')" class="text-sm neumorphic-button px-3 py-1 rounded-lg flex items-center gap-1"><i data-lucide="folder-plus" class="w-3 h-3"></i> Subcategoría</button>
+                            <button onclick="editCategory('${cat._id}')" class="text-sm neumorphic-button px-3 py-1 rounded-lg"><i data-lucide="edit-2" class="w-3 h-3"></i></button>
+                            <button onclick="deleteCategory('${cat._id}')" class="text-sm neumorphic-button px-3 py-1 rounded-lg text-red-500"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${cat.items.map(item => {
-                            const defaultImg = 'https://raw.githubusercontent.com/DrkBotBase/delivery/refs/heads/master/public/assets/images/menu_logo.png';
-                            const imgUrl = item.image || defaultImg;
-                            return `
-                                <div class="neumorphic-input rounded-xl p-4 flex justify-between items-center ${!item.active ? 'opacity-50' : ''}">
-                                    <div class="flex items-center gap-3">
-                                        <img src="${imgUrl}" class="w-10 h-10 object-cover rounded-lg" onerror="this.src='${defaultImg}'">
-                                        <div>
-                                            <p class="font-bold text-sm">${item.name}</p>
-                                            <p class="text-xs text-gray-400">$${item.basePrice.toLocaleString()}</p>
-                                        </div>
-                                    </div>
-                                    <div class="flex gap-2">
-                                        <button onclick="editItem('${cat._id}', '${item._id}')" class="p-2 neumorphic-button rounded-lg">
-                                            <i data-lucide="edit-3" class="w-3 h-3"></i>
-                                        </button>
-                                        <button onclick="deleteItem('${cat._id}', '${item._id}')" class="p-2 neumorphic-button rounded-lg text-red-500">
-                                            <i data-lucide="x" class="w-3 h-3"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
+                    ${directItems.length ? `<h4 class="text-sm font-bold text-gray-500 uppercase mb-2">Productos directos</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">${directItems.map(item => renderItemCard(cat, item)).join('')}</div>` : ''}
+                    ${subcategories.sort((a, b) => (a.order || 0) - (b.order || 0)).map(sub => `
+                        <div class="border-t border-[var(--light-shadow)] pt-4 mt-4">
+                            <div class="flex flex-wrap justify-between items-center gap-2 mb-3"><h4 class="font-bold text-lg">↳ ${sub.name} <span class="text-xs ${sub.active ? 'text-green-500' : 'text-red-500'}">(${sub.active ? 'Activa' : 'Desactivada'})</span></h4>
+                                <div class="flex gap-2"><button onclick="openItemModal('${cat._id}', null, '${sub._id}')" class="text-sm neumorphic-button px-3 py-1 rounded-lg">+ Producto</button><button onclick="editSubcategory('${cat._id}', '${sub._id}')" class="p-2 neumorphic-button rounded-lg"><i data-lucide="edit-2" class="w-3 h-3"></i></button><button onclick="deleteSubcategory('${cat._id}', '${sub._id}')" class="p-2 neumorphic-button rounded-lg text-red-500"><i data-lucide="trash-2" class="w-3 h-3"></i></button></div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">${(sub.items || []).map(item => renderItemCard(cat, item, sub)).join('')}</div>
+                        </div>`).join('')}
                 `;
                 container.appendChild(catEl);
             });
@@ -788,6 +777,7 @@
 
         function openCategoryModal(catId = null) {
             const cat = catId ? menuCategories.find(c => c._id === catId) : null;
+            const categoryDays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
             const modal = document.getElementById('modal-content');
             modal.innerHTML = `
                 <h3 class="text-xl font-bold mb-4">${cat ? 'Editar' : 'Nueva'} Categoría</h3>
@@ -804,6 +794,11 @@
                         <input type="checkbox" id="cat-active" ${cat ? (cat.active ? 'checked' : '') : 'checked'} class="w-4 h-4">
                         <label class="text-sm">Categoría Activa</label>
                     </div>
+                    <div class="border-t border-[var(--light-shadow)] pt-4 mt-2">
+                        <h4 class="font-bold text-sm mb-2">Disponibilidad semanal</h4>
+                        <p class="text-xs text-gray-500 mb-3">La categoría seguirá visible fuera de horario, pero sus productos quedarán bloqueados.</p>
+                        <div class="space-y-2">${categoryDays.map((day, index) => { const schedule = (cat && cat.schedule || []).find(item => item.day === index) || { open: '24h', close: '24h' }; return `<div class="grid grid-cols-[1fr_1fr_1fr] gap-2 items-center"><span class="text-xs font-bold">${day}</span><input type="text" id="cat-open-${index}" value="${schedule.open}" class="neumorphic-input p-2 rounded-lg text-xs" placeholder="24h o closed"><input type="text" id="cat-close-${index}" value="${schedule.close}" class="neumorphic-input p-2 rounded-lg text-xs" placeholder="23:30"></div>`; }).join('')}</div>
+                    </div>
                     <div class="flex gap-4 pt-4">
                         <button type="submit" class="flex-grow neumorphic-button py-3 rounded-xl font-bold" style="background-color: var(--primary-color); color: black;">Guardar</button>
                         <button type="button" onclick="closeModal()" class="flex-grow neumorphic-button py-3 rounded-xl font-bold">Cancelar</button>
@@ -815,7 +810,8 @@
                 const data = {
                     category: document.getElementById('cat-name').value,
                     order: parseInt(document.getElementById('cat-order').value),
-                    active: document.getElementById('cat-active').checked
+                    active: document.getElementById('cat-active').checked,
+                    schedule: Array.from({ length: 7 }, (_, day) => ({ day, open: document.getElementById(`cat-open-${day}`).value.trim(), close: document.getElementById(`cat-close-${day}`).value.trim() }))
                 };
                 const res = await fetch(cat ? `/api/menu-categories/${cat._id}` : '/api/menu-categories', {
                     method: cat ? 'PUT' : 'POST',
@@ -825,6 +821,38 @@
                 if (res.ok) { closeModal(); loadCategories(); }
             };
             document.getElementById('modal-overlay').classList.remove('hidden');
+        }
+
+        function openSubcategoryModal(catId, subId = null) {
+            const cat = menuCategories.find(c => c._id === catId);
+            const sub = subId ? (cat.subcategories || []).find(s => s._id === subId) : null;
+            const modal = document.getElementById('modal-content');
+            modal.innerHTML = `
+                <h3 class="text-xl font-bold mb-4">${sub ? 'Editar' : 'Nueva'} Subcategoría</h3>
+                <form id="subcategory-form" class="space-y-4">
+                    <input type="text" id="subcategory-name" value="${sub ? sub.name : ''}" placeholder="Nombre de la subcategoría" required class="w-full neumorphic-input p-3 rounded-lg">
+                    <input type="number" id="subcategory-order" value="${sub ? sub.order : 0}" placeholder="Orden" class="w-full neumorphic-input p-3 rounded-lg">
+                    <label class="flex items-center gap-2"><input type="checkbox" id="subcategory-active" ${sub ? (sub.active ? 'checked' : '') : 'checked'} class="w-4 h-4"> Subcategoría activa</label>
+                    <div class="flex gap-4"><button type="submit" class="flex-grow neumorphic-button py-3 rounded-xl font-bold" style="background-color: var(--primary-color); color: black;">Guardar</button><button type="button" onclick="closeModal()" class="flex-grow neumorphic-button py-3 rounded-xl font-bold">Cancelar</button></div>
+                </form>`;
+            document.getElementById('subcategory-form').onsubmit = async (e) => {
+                e.preventDefault();
+                const subcategories = [...(cat.subcategories || [])];
+                const value = { name: document.getElementById('subcategory-name').value, order: parseInt(document.getElementById('subcategory-order').value) || 0, active: document.getElementById('subcategory-active').checked, items: sub ? (sub.items || []) : [] };
+                if (sub) Object.assign(subcategories.find(s => s._id === subId), value); else subcategories.push(value);
+                const res = await fetch(`/api/menu-categories/${catId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subcategories }) });
+                if (res.ok) { closeModal(); loadCategories(); }
+            };
+            document.getElementById('modal-overlay').classList.remove('hidden');
+        }
+
+        function editSubcategory(catId, subId) { openSubcategoryModal(catId, subId); }
+        async function deleteSubcategory(catId, subId) {
+            if (!confirm('¿Eliminar subcategoría y sus productos?')) return;
+            const cat = menuCategories.find(c => c._id === catId);
+            const subcategories = (cat.subcategories || []).filter(s => s._id !== subId);
+            await fetch(`/api/menu-categories/${catId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subcategories }) });
+            loadCategories();
         }
 
         function addAdicionalRow(ad = null) {
@@ -838,9 +866,6 @@
                     <option value="checkbox" ${ad && ad.type === 'checkbox' ? 'selected' : ''}>Mult</option>
                     <option value="radio" ${ad && ad.type === 'radio' ? 'selected' : ''}>Unic</option>
                 </select>
-                <input type="number" placeholder="ID Ext" value="${ad ? (ad.id_product || '') : ''}" class="w-16 neumorphic-input p-2 rounded-lg text-xs ad-ext-id">
-                <input type="number" placeholder="Co" value="${ad ? (ad.id_companie || '') : ''}" class="w-12 neumorphic-input p-2 rounded-lg text-xs ad-ext-co">
-                <input type="number" placeholder="Pt" value="${ad ? (ad.id_point || '') : ''}" class="w-12 neumorphic-input p-2 rounded-lg text-xs ad-ext-pt">
                 <button type="button" onclick="this.parentElement.remove()" class="p-2 neumorphic-button rounded-lg text-red-500">
                     <i data-lucide="trash-2" class="w-3 h-3"></i>
                 </button>
@@ -849,9 +874,10 @@
             lucide.createIcons();
         }
 
-        function openItemModal(catId, itemId = null) {
+        function openItemModal(catId, itemId = null, subcategoryId = null) {
             const cat = menuCategories.find(c => c._id === catId);
-            const item = itemId ? cat.items.find(i => i._id === itemId) : null;
+            const subcategory = subcategoryId ? (cat.subcategories || []).find(s => s._id === subcategoryId) : null;
+            const item = itemId ? (subcategory ? subcategory.items : cat.items).find(i => i._id === itemId) : null;
             const modal = document.getElementById('modal-content');
             modal.innerHTML = `
                 <h3 class="text-xl font-bold mb-4">${item ? 'Editar' : 'Nuevo'} Producto</h3>
@@ -899,23 +925,6 @@
                         <div id="adicionales-container" class="space-y-2"></div>
                     </div>
 
-                    <div class="md:col-span-2 border-t border-[var(--light-shadow)] pt-4 mt-2">
-                        <h3 class="font-bold mb-2 text-sm text-gray-500 uppercase">Mapeo Externo (VinApp)</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-xs mb-1">ID Producto Externo</label>
-                                <input type="number" id="item-ext-id" value="${item && item.externalMapping ? item.externalMapping.id_product : ''}" class="w-full neumorphic-input p-3 rounded-lg text-color" placeholder="Ej: 12345">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">ID Compañía (Opcional)</label>
-                                <input type="number" id="item-ext-companie" value="${item && item.externalMapping ? (item.externalMapping.id_companie || '') : ''}" class="w-full neumorphic-input p-3 rounded-lg text-color" placeholder="8224">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">ID Punto (Opcional)</label>
-                                <input type="number" id="item-ext-point" value="${item && item.externalMapping ? (item.externalMapping.id_point || '') : ''}" class="w-full neumorphic-input p-3 rounded-lg text-color" placeholder="1640">
-                            </div>
-                        </div>
-                    </div>
                     <div class="flex items-center gap-2">
                         <input type="checkbox" id="item-active" ${item ? (item.active ? 'checked' : '') : 'checked'} class="w-4 h-4">
                         <label class="text-sm">Producto Activo</label>
@@ -933,28 +942,14 @@
 
             document.getElementById('item-form').onsubmit = async (e) => {
                 e.preventDefault();
-                const extId = document.getElementById('item-ext-id').value;
-                const extComp = document.getElementById('item-ext-companie').value;
-                const extPoint = document.getElementById('item-ext-point').value;
-
                 const adicionales = [];
                 document.querySelectorAll('.adicional-row').forEach(row => {
                     const name = row.querySelector('.ad-name').value;
                     const price = parseInt(row.querySelector('.ad-price').value);
                     const type = row.querySelector('.ad-type').value;
-                    const id_product = row.querySelector('.ad-ext-id').value;
-                    const id_companie = row.querySelector('.ad-ext-co').value;
-                    const id_point = row.querySelector('.ad-ext-pt').value;
                     
                     if (name) {
-                        adicionales.push({ 
-                            name, 
-                            price: price || 0, 
-                            type,
-                            id_product: id_product ? parseInt(id_product) : null,
-                            id_companie: id_companie ? parseInt(id_companie) : null,
-                            id_point: id_point ? parseInt(id_point) : null
-                        });
+                        adicionales.push({ name, price: price || 0, type });
                     }
                 });
 
@@ -966,28 +961,19 @@
                     image: document.getElementById('item-image').value,
                     kitchenGuide: document.getElementById('item-kitchen').value,
                     active: document.getElementById('item-active').checked,
-                    adicionales: adicionales,
-                    externalMapping: {
-                        ...(item ? item.externalMapping : {}),
-                        id_product: extId ? parseInt(extId) : null,
-                        id_companie: extComp ? parseInt(extComp) : null,
-                        id_point: extPoint ? parseInt(extPoint) : null,
-                        name_product: document.getElementById('item-name').value,
-                        valor: parseInt(document.getElementById('item-price').value)
-                    }
+                    adicionales: adicionales
                 };
                 
-                let updatedItems;
+                const updatedItems = subcategory ? [...(subcategory.items || [])] : [...(cat.items || [])];
                 if (item) {
-                    updatedItems = cat.items.map(i => i._id === item._id ? { ...i, ...newItem } : i);
-                } else {
-                    updatedItems = [...cat.items, newItem];
-                }
+                    const itemIndex = updatedItems.findIndex(i => i._id === item._id);
+                    updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...newItem };
+                } else updatedItems.push(newItem);
 
                 const res = await fetch(`/api/menu-categories/${cat._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ items: updatedItems })
+                    body: JSON.stringify(subcategory ? { subcategories: (cat.subcategories || []).map(s => s._id === subcategoryId ? { ...s, items: updatedItems } : s) } : { items: updatedItems })
                 });
                 if (res.ok) { closeModal(); loadCategories(); }
             };
@@ -1006,15 +992,16 @@
             loadCategories();
         }
 
-        function editItem(catId, itemId) { openItemModal(catId, itemId); }
-        async function deleteItem(catId, itemId) {
+        function editItem(catId, itemId, subcategoryId = null) { openItemModal(catId, itemId, subcategoryId || null); }
+        async function deleteItem(catId, itemId, subcategoryId = null) {
             if (!confirm('¿Eliminar producto?')) return;
             const cat = menuCategories.find(c => c._id === catId);
-            const updatedItems = cat.items.filter(i => i._id !== itemId);
+            const subcategory = subcategoryId ? (cat.subcategories || []).find(s => s._id === subcategoryId) : null;
+            const updatedItems = (subcategory ? subcategory.items : cat.items).filter(i => i._id !== itemId);
             await fetch(`/api/menu-categories/${catId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: updatedItems })
+                body: JSON.stringify(subcategory ? { subcategories: (cat.subcategories || []).map(s => s._id === subcategoryId ? { ...s, items: updatedItems } : s) } : { items: updatedItems })
             });
             loadCategories();
         }
@@ -1093,23 +1080,6 @@
                             </div>
                         </div>
                     </div>
-                    <div class="border-t border-[var(--light-shadow)] pt-4 mt-2">
-                        <h3 class="font-bold mb-2 text-sm text-gray-500 uppercase">Mapeo Externo (VinApp)</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-xs mb-1">ID Producto Externo</label>
-                                <input type="number" id="promo-ext-id" value="${promo && promo.externalMapping ? (promo.externalMapping.id_product || '') : ''}" class="w-full neumorphic-input p-3 rounded-lg text-color" placeholder="Ej: 12345">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">ID Compañía (Opcional)</label>
-                                <input type="number" id="promo-ext-companie" value="${promo && promo.externalMapping ? (promo.externalMapping.id_companie || '') : ''}" class="w-full neumorphic-input p-3 rounded-lg text-color" placeholder="8224">
-                            </div>
-                            <div>
-                                <label class="block text-xs mb-1">ID Punto (Opcional)</label>
-                                <input type="number" id="promo-ext-point" value="${promo && promo.externalMapping ? (promo.externalMapping.id_point || '') : ''}" class="w-full neumorphic-input p-3 rounded-lg text-color" placeholder="1640">
-                            </div>
-                        </div>
-                    </div>
                     <div>
                         <label class="block text-sm mb-1 text-amber-500 font-bold">Duración de la Promoción (Minutos)</label>
                         <input type="number" id="promo-duration" class="w-full neumorphic-input p-3 rounded-lg text-color" placeholder="Ej: 30 (Dejar vacío para permanente)" min="1">
@@ -1151,19 +1121,8 @@
                     const name = row.querySelector('.ad-name').value;
                     const price = parseInt(row.querySelector('.ad-price').value);
                     const type = row.querySelector('.ad-type').value;
-                    const id_product = row.querySelector('.ad-ext-id').value;
-                    const id_companie = row.querySelector('.ad-ext-co').value;
-                    const id_point = row.querySelector('.ad-ext-pt').value;
-                    
                     if (name) {
-                        adicionales.push({ 
-                            name, 
-                            price: price || 0, 
-                            type,
-                            id_product: id_product ? parseInt(id_product) : null,
-                            id_companie: id_companie ? parseInt(id_companie) : null,
-                            id_point: id_point ? parseInt(id_point) : null
-                        });
+                        adicionales.push({ name, price: price || 0, type });
                     }
                 });
 
@@ -1174,14 +1133,7 @@
                     image: document.getElementById('promo-image').value,
                     duration: durationVal ? parseInt(durationVal) : (promo ? null : null),
                     active: document.getElementById('promo-active').checked,
-                    adicionales: adicionales,
-                    externalMapping: {
-                        id_product: parseInt(document.getElementById('promo-ext-id').value) || null,
-                        id_companie: parseInt(document.getElementById('promo-ext-companie').value) || null,
-                        id_point: parseInt(document.getElementById('promo-ext-point').value) || null,
-                        name_product: document.getElementById('promo-name').value,
-                        valor: parseInt(document.getElementById('promo-basePrice').value)
-                    }
+                    adicionales: adicionales
                 };
 
                 const res = await fetch(promo ? `/api/promotions/${promo._id}` : '/api/promotions', {

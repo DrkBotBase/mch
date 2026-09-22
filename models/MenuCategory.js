@@ -7,32 +7,32 @@ const menuItemSchema = new mongoose.Schema({
     basePrice: Number,
     image: String,
     kitchenGuide: String,
-    externalMapping: {
-        id_product: Number,
-        name_product: String,
-        valor: Number,
-        id_companie: Number,
-        id_point: Number,
-        additions: [{
-            id_product: Number,
-            name_product: String,
-            valor: Number
-        }]
-    },
     adicionales: [{
         name: String,
         price: Number,
         type: { type: String, default: 'checkbox' },
-        id_product: Number,
-        id_companie: Number,
-        id_point: Number
     }],
     active: { type: Boolean, default: true }
 });
 
+const menuSubcategorySchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    items: [menuItemSchema],
+    order: { type: Number, default: 0 },
+    active: { type: Boolean, default: true }
+});
+
+const categoryScheduleSchema = new mongoose.Schema({
+    day: { type: Number, min: 0, max: 6, required: true },
+    open: { type: String, default: '24h' },
+    close: { type: String, default: '24h' }
+}, { _id: false });
+
 const menuCategorySchema = new mongoose.Schema({
     category: String,
     items: [menuItemSchema],
+    subcategories: [menuSubcategorySchema],
+    schedule: [categoryScheduleSchema],
     order: { type: Number, default: 0 },
     active: { type: Boolean, default: true }
 }, { timestamps: true });

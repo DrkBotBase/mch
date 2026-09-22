@@ -49,7 +49,6 @@ const MenuCategory = require('./models/MenuCategory');
 const Subscription = require('./models/Subscription');
 const User = require('./models/User');
 const webpush = require('web-push');
-const axios = require('axios');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -70,6 +69,13 @@ const storage = new CloudinaryStorage({
 });
 
 const upload = multer({ storage: storage });
+
+function getAllMenuItems(categories) {
+    return categories.flatMap(cat => [
+        ...(cat.items || []),
+        ...(cat.subcategories || []).flatMap(subcategory => subcategory.items || [])
+    ]);
+}
 
 webpush.setVapidDetails(
     process.env.VAPID_EMAIL || 'mailto:admin@example.com',
@@ -131,7 +137,7 @@ async function seedDefaultData() {
                     category: "⭐ Combos Imperdibles (Súper Ahorro)",
                     order: 1,
                     items: [
-                        { id: 101, name: "Product Example", description: "test product", basePrice: 0, image: "", kitchenGuide: "", externalMapping: { id_product: 0, additions: [] } }
+                        { id: 101, name: "Product Example", description: "test product", basePrice: 0, image: "", kitchenGuide: "" }
                     ]
                 }
             ];
@@ -179,7 +185,15 @@ app.get('/', async (req, res) => {
             paymentInfo: restaurantInfo.paymentInfo,
             menu: menuCategories.map(cat => ({
                 category: cat.category,
-                items: cat.items.filter(item => item.active)
+                items: cat.items.filter(item => item.active),
+                schedule: cat.schedule || [],
+                subcategories: (cat.subcategories || [])
+                    .filter(subcategory => subcategory.active)
+                    .sort((a, b) => a.order - b.order)
+                    .map(subcategory => ({
+                        name: subcategory.name,
+                        items: (subcategory.items || []).filter(item => item.active)
+                    }))
             }))
         };
 
@@ -192,10 +206,7 @@ app.get('/', async (req, res) => {
         const productId = req.query.item;
         if (productId) {
             let foundItem = null;
-            for (const cat of menuCategories) {
-                foundItem = cat.items.find(i => String(i.id) === productId);
-                if (foundItem) break;
-            }
+            foundItem = getAllMenuItems(menuCategories).find(i => String(i.id) === productId);
 
             if (!foundItem && dbPromotions) {
                 foundItem = dbPromotions.find(p => String(p._id) === productId || String(p.itemId) === productId);
@@ -577,169 +588,6 @@ app.post('/api/orders', async (req, res) => {
         const newOrder = new Order({ ...req.body, shortId });
         await newOrder.save();
 
-        try {
-            const categories = await MenuCategory.find();
-            const promotions = await Promotion.find();
-            
-            let restaurantOrders = {};
-
-            for (const item of items) {
-                let dbItem = null;
-                for (const cat of categories) {
-                    dbItem = cat.items.find(i => i.name === item.name);
-                    if (dbItem) break;
-                }
-
-                if (!dbItem) {
-                    dbItem = promotions.find(p => p.name === item.name);
-                }
-
-                if (dbItem && dbItem.externalMapping && dbItem.externalMapping.id_product) {
-                    const compId = dbItem.externalMapping.id_companie || 8224;
-                    const pointId = dbItem.externalMapping.id_point || 1640;
-                    const restKey = `${compId}_${pointId}`;
-
-                    if (!restaurantOrders[restKey]) {
-                        restaurantOrders[restKey] = {
-                            id_companie: compId,
-                            id_point: pointId,
-                            externalCart: []
-                        };
-                    }
-
-                    const additions = dbItem.externalMapping.additions || [];
-                    const additionsCost = additions.reduce((acc, add) => acc + add.valor, 0);
-                    
-                    restaurantOrders[restKey].externalCart.push({
-                        id_product: dbItem.externalMapping.id_product,
-                        name_product: dbItem.name,
-                        valor: dbItem.basePrice - additionsCost,
-                        cantidad: item.quantity,
-                        addition_v: 0,
-                        descuento: 0,
-                        combination: false,
-                        addition: [],
-                        estado: true,
-                        observation_optional: item.instructions || ""
-                    });
-
-                    for (const add of additions) {
-                        restaurantOrders[restKey].externalCart.push({
-                            id_product: add.id_product,
-                            name_product: add.name_product,
-                            valor: add.valor,
-                            cantidad: item.quantity,
-                            addition_v: 0,
-                            descuento: 0,
-                            combination: false,
-                            addition: [],
-                            estado: true,
-                            observation_optional: ""
-                        });
-                    }
-
-                    if (item.adicionales && item.adicionales.length > 0) {
-                        for (const ad of item.adicionales) {
-                            if (ad.id_product) {
-                                const adCompId = ad.id_companie || compId;
-                                const adPointId = ad.id_point || pointId;
-                                const adRestKey = `${adCompId}_${adPointId}`;
-
-                                if (!restaurantOrders[adRestKey]) {
-                                    restaurantOrders[adRestKey] = {
-                                        id_companie: adCompId,
-                                        id_point: adPointId,
-                                        externalCart: []
-                                    };
-                                }
-
-                                restaurantOrders[adRestKey].externalCart.push({
-                                    id_product: ad.id_product,
-                                    name_product: ad.name,
-                                    valor: ad.price,
-                                    cantidad: item.quantity,
-                                    addition_v: 0,
-                                    descuento: 0,
-                                    combination: false,
-                                    addition: [],
-                                    estado: true,
-                                    observation_optional: ""
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-
-            const restaurantInfo = await RestaurantInfo.findOne();
-            const myName = restaurantInfo ? restaurantInfo.config.nombre : "MJFOOD";
-            const myPhone = restaurantInfo ? restaurantInfo.config.telefonoWhatsApp : "573046793853";
-
-            const ua = req.get('user-agent') || '';
-            let detectedOS = "PC";
-            let detectedPlatform = "Web";
-
-            if (/android/i.test(ua)) {
-                detectedOS = "Android";
-                detectedPlatform = "App";
-            } else if (/iphone|ipad|ipod/i.test(ua)) {
-                detectedOS = "iOS";
-                detectedPlatform = "App";
-            }
-
-            for (const key in restaurantOrders) {
-                const { id_companie, id_point, externalCart } = restaurantOrders[key];
-                const externalTotal = externalCart.reduce((sum, item) => sum + (item.valor * item.cantidad), 0);
-
-                const externalOrderData = {
-                    nombres: myName,
-                    cedula: "",
-                    fecha_nacimiento: "",
-                    id_user_mesero: null,
-                    fecha_nacimiento_dia: new Date().getDate(),
-                    fecha_nacimiento_mes: new Date().getMonth() + 1,
-                    email: null,
-                    barrio: "",
-                    telefono: myPhone,
-                    direccion: "Recoger - MJFOOD",
-                    nombre_mesero: "",
-                    comentario: `Ref: ${shortId} | Obs: ${comments || "Sin observaciones"}`,
-                    id_companie: id_companie,
-                    nit: "",
-                    mesa: 0,
-                    id_point: id_point,
-                    latitude: "No",
-                    longitude: "No",
-                    id_type_forma_pago: "37",
-                    descuento: 0,
-                    id_coupon: "",
-                    type_document: "CC",
-                    documento: "",
-                    wp_reference: "",
-                    id_type_platform_delivery: 154,
-                    name_point: "",
-                    domicilio: 0,
-                    cart: JSON.stringify(externalCart),
-                    estado_domicilio: true,
-                    total: externalTotal,
-                    os: detectedOS,
-                    entrega: "",
-                    priority_shipping: false,
-                    value_priority_shipping: null,
-                    id_zone: 0,
-                    bank_type: 0,
-                    incremento_datafono: 0,
-                    mesa_domicilio: false,
-                    platform: detectedPlatform,
-                    valHowPay: "0"
-                };
-
-                await axios.post('https://back.vinapp.co/api/order/save-order-end', externalOrderData);
-            }
-        } catch (bridgeError) {
-            console.error('Error in Bridge Automation:', bridgeError.response ? bridgeError.response.data : bridgeError.message);
-        }
-        
         res.status(201).json({ success: true, message: 'Order saved', orderId: newOrder._id, shortId });
     } catch (error) {
         console.error(error);
