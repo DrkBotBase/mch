@@ -422,11 +422,35 @@ app.get('/api/admin/orders', isAuthenticated, async (req, res) => {
 
 app.get('/api/admin/clients', isAuthenticated, async (req, res) => {
     try {
-        const users = await User.find().sort({ lastOrderAt: -1 });
+        const allowedSortFields = ['orderCount', 'totalSpent', 'lastOrderAt', 'name', 'phone'];
+        const sortField = allowedSortFields.includes(req.query.sort) ? req.query.sort : 'lastOrderAt';
+        const sortDirection = req.query.direction === 'asc' ? 1 : -1;
+        const users = await User.find().sort({ [sortField]: sortDirection });
         res.json({ success: true, users });
     } catch (error) {
         console.error('Error fetching clients:', error);
         res.status(500).json({ success: false });
+    }
+});
+
+app.put('/api/admin/clients/:id', isAuthenticated, async (req, res) => {
+    try {
+        const { name, phone, address } = req.body;
+        if (!name || !phone || !address) {
+            return res.status(400).json({ success: false, message: 'Nombre, teléfono y dirección son obligatorios' });
+        }
+
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { $set: { name: String(name).trim(), phone: String(phone).trim(), address: String(address).trim() } },
+            { new: true, runValidators: true }
+        );
+        if (!user) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
+        res.json({ success: true, user });
+    } catch (error) {
+        console.error('Error updating client:', error);
+        if (error.code === 11000) return res.status(409).json({ success: false, message: 'El teléfono ya pertenece a otro cliente' });
+        res.status(500).json({ success: false, message: 'Error al actualizar el cliente' });
     }
 });
 

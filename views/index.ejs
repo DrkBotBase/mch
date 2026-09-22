@@ -674,6 +674,10 @@
             const productId = urlParams.get('item');
             if (productId) {
                 let item = getAllMenuItems(data.menu).find(i => String(i.id) === productId);
+                if (item) {
+                    const itemCategory = data.menu.find(cat => getAllMenuItems([cat]).some(i => String(i.id) === productId));
+                    item = { ...item, categoryAvailable: isCategoryAvailable(itemCategory && itemCategory.schedule) };
+                }
                 
                 if (!item && window.dbPromotions) {
                     const promo = window.dbPromotions.find(p => String(p._id) === productId || String(p.itemId) === productId);
@@ -923,6 +927,17 @@
             itemModal.desc.textContent = item.description; 
             itemModal.instructions.value = ''; 
             itemModal.qty.textContent = '1';
+            const itemUnavailable = item.categoryAvailable === false;
+            itemModal.addBtn.disabled = itemUnavailable;
+            itemModal.addBtn.classList.toggle('opacity-50', itemUnavailable);
+            itemModal.addBtn.classList.toggle('cursor-not-allowed', itemUnavailable);
+            itemModal.addBtn.title = itemUnavailable ? 'No disponible en este horario' : 'Agregar al carrito';
+            if (itemUnavailable) {
+                itemModal.addBtn.textContent = 'No disponible ahora';
+            } else {
+                itemModal.addBtn.innerHTML = 'Añadir por <span id="item-modal-price">$0</span>';
+                itemModal.price = document.getElementById('item-modal-price');
+            }
             
             const imgContainer = document.getElementById('item-modal-image-container');
             const imgElement = document.getElementById('item-modal-image');
@@ -969,12 +984,16 @@
                 });
             }
 
-            calculateItemPrice();
+            if (!itemUnavailable) calculateItemPrice();
             toggleModal('item', true);
         }
         
         function addToCart() {
             if (!currentItem) return;
+            if (currentItem.categoryAvailable === false) {
+                showToast('Este producto no está disponible en este horario.', 'error');
+                return;
+            }
             
             const radioInputs = document.querySelectorAll('.adicional-input[type="radio"]');
             if (radioInputs.length > 0) {
@@ -1093,7 +1112,7 @@
                 const priceText = item.basePrice === 0 ? 'Ver precios' : `$${item.basePrice.toLocaleString()}`;
                 return `<div class="neumorphic-pressed rounded-2xl p-4 flex items-center gap-4 hover:border hover:border-lime-500/20 transition-all">
                     <div class="flex-grow"><h3 class="text-base md:text-lg font-bold text-color">${item.name}</h3><p class="text-xs text-gray-400 my-1 leading-relaxed">${item.description || ''}</p><p class="text-md md:text-lg font-black accent-text mt-2">${priceText}</p></div>
-                    <div class="flex-shrink-0"><button ${categoryAvailable ? '' : 'disabled'} class="select-item-btn neumorphic-button text-black font-bold p-3 rounded-xl ${categoryAvailable ? 'hover:scale-105 active:scale-95' : 'opacity-40 cursor-not-allowed'} transition flex items-center justify-center" style="background-color: var(--primary-color);" data-id="${item.id}" title="${categoryAvailable ? 'Agregar al pedido' : 'No disponible en este horario'}"><i data-lucide="${categoryAvailable ? 'plus' : 'lock'}" class="w-5 h-5"></i></button></div>
+                    <div class="flex-shrink-0"><button class="select-item-btn neumorphic-button text-black font-bold p-3 rounded-xl hover:scale-105 active:scale-95 transition flex items-center justify-center" style="background-color: var(--primary-color);" data-id="${item.id}" data-category-available="${categoryAvailable}" title="Abrir producto"><i data-lucide="plus" class="w-5 h-5"></i></button></div>
                 </div>`;
             }).join('');
         }
@@ -1317,12 +1336,12 @@
                 }
 
                 const selectBtn = e.target.closest('.select-item-btn');
-                if (selectBtn && !selectBtn.disabled) {
+                if (selectBtn) {
                     const itemId = parseInt(selectBtn.dataset.id);
                     const item = getAllMenuItems(window.restaurantData.menu)
                         .find(i => i.id === itemId);
 
-                    if (item) openItemModal(item);
+                    if (item) openItemModal({ ...item, categoryAvailable: selectBtn.dataset.categoryAvailable !== 'false' });
                 }
             });
 

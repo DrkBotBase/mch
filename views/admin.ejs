@@ -19,6 +19,17 @@
             color: var(--text-color);
             font-family: 'Inter', sans-serif;
         }
+        *, *::before, *::after { box-sizing: border-box; }
+        input, textarea, select, button { max-width: 100%; }
+        .modal-content, .modal-content form, .modal-content .grid, .modal-content .flex { min-width: 0; }
+        .modal-content input, .modal-content textarea, .modal-content select { min-width: 0; width: 100%; }
+        .adicional-row > * { min-width: 0; }
+        @media (max-width: 640px) {
+            body { padding: 0.75rem; }
+            .modal-content { padding: 1rem; max-height: 94vh; overflow-x: hidden; }
+            .modal-content .flex.gap-4 { flex-wrap: wrap; }
+            .modal-content .flex.gap-4 > button { flex: 1 1 100%; }
+        }
         .neumorphic-flat {
             background: var(--bg-color);
             box-shadow: 7px 7px 15px var(--dark-shadow), -7px -7px 15px var(--light-shadow);
@@ -324,11 +335,22 @@
         </div>
 
         <div id="content-clients" class="tab-content hidden">
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-3">
                 <h2 class="text-xl font-bold">Base de Datos de Clientes</h2>
-                <button onclick="loadClients()" class="neumorphic-button px-4 py-2 rounded-lg text-sm flex items-center gap-2">
-                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Actualizar
-                </button>
+                <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    <label for="clients-sort" class="text-xs font-bold">Ordenar por</label>
+                    <select id="clients-sort" onchange="loadClients()" class="neumorphic-input px-3 py-2 rounded-lg text-sm flex-1 md:flex-none">
+                        <option value="orderCount-desc">Más pedidos</option>
+                        <option value="orderCount-asc">Menos pedidos</option>
+                        <option value="totalSpent-desc">Mayor gasto</option>
+                        <option value="totalSpent-asc">Menor gasto</option>
+                        <option value="lastOrderAt-desc">Último pedido</option>
+                        <option value="name-asc">Nombre A-Z</option>
+                    </select>
+                    <button onclick="loadClients()" class="neumorphic-button px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i> Actualizar
+                    </button>
+                </div>
             </div>
             <div class="neumorphic-flat rounded-2xl overflow-hidden">
                 <div class="overflow-x-auto">
@@ -341,6 +363,7 @@
                                 <th class="p-4 font-bold">Pedidos</th>
                                 <th class="p-4 font-bold">Total Gastado</th>
                                 <th class="p-4 font-bold">Último Pedido</th>
+                                <th class="p-4 font-bold">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="clients-list" class="text-sm">
@@ -1304,16 +1327,18 @@
         // --- Clientes ---
         async function loadClients() {
             const list = document.getElementById('clients-list');
-            list.innerHTML = '<tr><td colspan="5" class="p-4 text-center">Cargando clientes...</td></tr>';
+            list.innerHTML = '<tr><td colspan="7" class="p-4 text-center">Cargando clientes...</td></tr>';
             
             try {
-                const res = await fetch('/api/admin/clients');
+                const sortValue = document.getElementById('clients-sort')?.value || 'lastOrderAt-desc';
+                const [sort, direction] = sortValue.split('-');
+                const res = await fetch(`/api/admin/clients?sort=${encodeURIComponent(sort)}&direction=${encodeURIComponent(direction)}`);
                 const data = await res.json();
                 
                 if (data.success) {
                     list.innerHTML = '';
                     if (data.users.length === 0) {
-                        list.innerHTML = '<tr><td colspan="5" class="p-4 text-center">No hay clientes registrados aún.</td></tr>';
+                        list.innerHTML = '<tr><td colspan="7" class="p-4 text-center">No hay clientes registrados aún.</td></tr>';
                         return;
                     }
                     
@@ -1327,14 +1352,57 @@
                             <td class="p-4 text-center"><span class="bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full text-xs font-bold">${user.orderCount}</span></td>
                             <td class="p-4 font-bold accent-text">$${(user.totalSpent || 0).toLocaleString()}</td>
                             <td class="p-4 text-gray-400 text-xs">${new Date(user.lastOrderAt).toLocaleString()}</td>
+                            <td class="p-4"><button onclick="openClientModal('${user._id}')" class="neumorphic-button px-3 py-2 rounded-lg text-sm flex items-center gap-1"><i data-lucide="edit-3" class="w-4 h-4"></i> Editar</button></td>
                         `;
                         list.appendChild(tr);
                     });
+                    lucide.createIcons();
                 }
             } catch (err) {
                 console.error('Error:', err);
-                list.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500">Error al cargar clientes.</td></tr>';
+                list.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500">Error al cargar clientes.</td></tr>';
             }
+        }
+
+        async function openClientModal(clientId) {
+            const sortValue = document.getElementById('clients-sort')?.value || 'lastOrderAt-desc';
+            const [sort, direction] = sortValue.split('-');
+            const res = await fetch(`/api/admin/clients?sort=${encodeURIComponent(sort)}&direction=${encodeURIComponent(direction)}`);
+            const data = await res.json();
+            const client = data.users?.find(user => user._id === clientId);
+            if (!client) return showToast('No se encontró el cliente', 'error');
+
+            const modal = document.getElementById('modal-content');
+            modal.innerHTML = `
+                <h3 class="text-xl font-bold mb-4">Editar Cliente</h3>
+                <form id="client-form" class="space-y-4">
+                    <div><label class="block text-sm mb-1">Nombre</label><input type="text" id="client-name" required class="w-full neumorphic-input p-3 rounded-lg"></div>
+                    <div><label class="block text-sm mb-1">Teléfono</label><input type="text" id="client-phone" required class="w-full neumorphic-input p-3 rounded-lg"></div>
+                    <div><label class="block text-sm mb-1">Dirección</label><textarea id="client-address" required class="w-full neumorphic-input p-3 rounded-lg h-24"></textarea></div>
+                    <div class="flex gap-4 pt-4"><button type="submit" class="flex-grow neumorphic-button py-3 rounded-xl font-bold" style="background-color: var(--primary-color); color: black;">Guardar</button><button type="button" onclick="closeModal()" class="flex-grow neumorphic-button py-3 rounded-xl font-bold">Cancelar</button></div>
+                </form>`;
+            document.getElementById('client-name').value = client.name || '';
+            document.getElementById('client-phone').value = client.phone || '';
+            document.getElementById('client-address').value = client.address || '';
+            document.getElementById('client-form').onsubmit = async (e) => {
+                e.preventDefault();
+                const updateRes = await fetch(`/api/admin/clients/${clientId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: document.getElementById('client-name').value,
+                        phone: document.getElementById('client-phone').value,
+                        address: document.getElementById('client-address').value
+                    })
+                });
+                const result = await updateRes.json();
+                if (updateRes.ok) {
+                    closeModal();
+                    loadClients();
+                    showToast('Cliente actualizado', 'success');
+                } else showToast(result.message || 'Error al actualizar el cliente', 'error');
+            };
+            document.getElementById('modal-overlay').classList.remove('hidden');
         }
 
         const originalShowTab = window.showTab;
