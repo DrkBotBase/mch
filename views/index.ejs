@@ -1128,7 +1128,7 @@
                 const availabilityLabel = categoryAvailable ? '' : '<span class="text-xs font-bold text-amber-400 ml-2">No disponible ahora</span>';
                 accordion.innerHTML = `<button class="category-header w-full p-6 flex justify-between items-center text-left focus:outline-none"><h2 class="text-xl md:text-2xl font-black tracking-tight text-color">${cat.category}${availabilityLabel}</h2><i data-lucide="chevron-down" class="chevron-icon w-6 h-6 text-color"></i></button>
                     <div class="category-content"><div class="space-y-6">
-                        ${!categoryAvailable ? '<div class="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-300">Esta categoría está visible, pero sus productos no están disponibles en este horario.</div>' : ''}
+                        ${!categoryAvailable ? '<div class="rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-400">Los productos de esta categoría no están disponibles en este horario.</div>' : ''}
                         ${directItems.length ? `<section><h3 class="text-sm font-bold uppercase tracking-wider accent-text mb-3">Productos</h3><div class="space-y-4">${renderProductList(directItems, categoryAvailable)}</div></section>` : ''}
                         ${subcategories.map(sub => `<section class="border-t border-[var(--light-shadow)] pt-5"><h3 class="text-lg md:text-xl font-black text-color mb-3">${sub.name}</h3><div class="space-y-4">${renderProductList(sub.items, categoryAvailable)}</div></section>`).join('')}
                     </div></div>`;
