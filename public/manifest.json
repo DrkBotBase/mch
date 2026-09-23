@@ -4,7 +4,7 @@
   "description": "Tus antojos favoritos en un solo lugar.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#e21c1b",
+  "background_color": "#01062e",
   "theme_color": "#edebe4",
   "orientation": "portrait",
   "icons": [
