@@ -1,7 +1,7 @@
 {
-  "name": "La Muralla China Pedidos",
-  "short_name": "La Muralla China Pedidos",
-  "description": "Comida China y almuerzos ejecutivos.",
+  "name": "MJFOOD",
+  "short_name": "MJFOOD - Pedidos",
+  "description": "Tus antojos favoritos en un solo lugar.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#e21c1b",

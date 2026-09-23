@@ -199,7 +199,7 @@ app.get('/', async (req, res) => {
 
         let meta = {
             title: restaurantInfo.config.nombre,
-            description: "Comida China y almuerzos ejecutivos.",
+            description: "Tus antojos favoritos en un solo lugar.",
             image: restaurantInfo.config.logoUrl || ""
         };
 
