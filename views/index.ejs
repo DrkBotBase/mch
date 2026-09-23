@@ -1484,6 +1484,7 @@
 
         // --- Banners ---
         let deferredPrompt;
+        let notifDismissedThisPage = false;
         const pwaBanner = document.getElementById('pwa-install-banner');
         const notifBanner = document.getElementById('notif-subscribe-banner');
 
@@ -1515,8 +1516,9 @@
         });
 
         async function checkNotificationPrompt() {
-            if (isPWA() && 'Notification' in window && Notification.permission === 'default') {
-                if (!localStorage.getItem('notif_dismissed') && !localStorage.getItem('notif_subscribed')) {
+            const pushSupported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window && VAPID_PUBLIC_KEY.trim();
+            if (pushSupported && Notification.permission === 'default') {
+                if (!notifDismissedThisPage && !localStorage.getItem('notif_subscribed')) {
                     setTimeout(() => {
                         notifBanner.classList.remove('hidden');
                         setTimeout(() => notifBanner.classList.add('active'), 100);
@@ -1526,6 +1528,10 @@
         }
 
         document.getElementById('notif-subscribe-btn').addEventListener('click', async () => {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window) || !VAPID_PUBLIC_KEY.trim()) {
+                showToast('Las notificaciones no están disponibles en este navegador.', 'error');
+                return;
+            }
             const permission = await Notification.requestPermission();
             if (permission === 'granted') {
                 notifBanner.classList.remove('active');
@@ -1534,13 +1540,13 @@
                 }
             } else {
                 notifBanner.classList.remove('active');
-                localStorage.setItem('notif_dismissed', 'true');
+                notifDismissedThisPage = true;
             }
         });
 
         document.getElementById('notif-dismiss-btn').addEventListener('click', () => {
             notifBanner.classList.remove('active');
-            localStorage.setItem('notif_dismissed', 'true');
+            notifDismissedThisPage = true;
         });
 
         if ('serviceWorker' in navigator) {
