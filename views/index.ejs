@@ -1013,11 +1013,8 @@
                 adicionales.push({ name: cb.dataset.name, price: parseFloat(cb.dataset.price) });
             });
 
-            const cartId = String(Date.now() + Math.random());
-
-            cart.push({
+            const itemToAdd = {
                 id: currentItem.id,
-                cartId: cartId,
                 name: currentItem.name,
                 price: price,
                 quantity: quantity,
@@ -1025,10 +1022,40 @@
                 instructions: instructions,
                 adicionales: adicionales,
                 kitchenGuide: currentItem.kitchenGuide || `${currentItem.name} (Eje del local)`
-            });
+            };
+            const itemKey = getCartItemKey(itemToAdd);
+            const existingItem = cart.find(item => getCartItemKey(item) === itemKey);
+
+            if (existingItem) {
+                existingItem.quantity += quantity;
+            } else {
+                itemToAdd.cartId = String(Date.now() + Math.random());
+                cart.push(itemToAdd);
+            }
             
             renderCart();
             toggleModal('item', false);
+        }
+
+        function getCartItemKey(item) {
+            return JSON.stringify({
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                isPromo: Boolean(item.isPromo),
+                instructions: (item.instructions || '').trim(),
+                adicionales: (item.adicionales || []).map(ad => ({ name: ad.name, price: ad.price }))
+            });
+        }
+
+        function getGroupedCartItems() {
+            const grouped = [];
+            cart.forEach(item => {
+                const existing = grouped.find(group => getCartItemKey(group) === getCartItemKey(item));
+                if (existing) existing.quantity += item.quantity;
+                else grouped.push({ ...item, quantity: item.quantity });
+            });
+            return grouped;
         }
         
         function renderCart() {
@@ -1121,7 +1148,7 @@
             menuContainer.innerHTML = '';
             window.restaurantData.menu.forEach((cat, index) => {
                 const accordion = document.createElement('div');
-                accordion.className = `category-accordion neumorphic-flat rounded-2xl${index === 0 ? ' active' : ''}`;
+                accordion.className = 'category-accordion neumorphic-flat rounded-2xl';
                 const directItems = cat.items || [];
                 const subcategories = cat.subcategories || [];
                 const categoryAvailable = isCategoryAvailable(cat.schedule);
@@ -1190,7 +1217,7 @@
           message += `🚚 *Zona:* ${shippingZoneName} ($${shippingCost.toLocaleString()} COP)\n\n`;
       
           message += `🧾 *DETALLE DEL PEDIDO:*\n`;
-          cart.forEach((item, i) => {
+          getGroupedCartItems().forEach((item, i) => {
             message += `${i + 1}. *${item.name}* (x${item.quantity}) - $${(item.price * item.quantity).toLocaleString()}\n`;
             if (item.adicionales && item.adicionales.length > 0) {
               item.adicionales.forEach(ad => {

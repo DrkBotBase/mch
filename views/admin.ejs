@@ -489,6 +489,37 @@
             lucide.createIcons();
         }
 
+        function groupOrderItems(items = []) {
+            const grouped = [];
+            items.forEach(item => {
+                const key = JSON.stringify({
+                    name: item.name,
+                    price: item.price,
+                    instructions: (item.instructions || '').trim(),
+                    adicionales: (item.adicionales || []).map(ad => ({ name: ad.name, price: ad.price }))
+                });
+                const existing = grouped.find(group => group.key === key);
+                if (existing) existing.item.quantity += item.quantity || 1;
+                else grouped.push({ key, item: { ...item, quantity: item.quantity || 1 } });
+            });
+            return grouped.map(group => group.item);
+        }
+
+        function renderOrderItemLines(items, includeNotes = false) {
+            return groupOrderItems(items).map(item => `
+                <div class="flex justify-between text-sm">
+                    <span>${item.quantity}x ${item.name}</span>
+                    <span>$${(item.price * item.quantity).toLocaleString()}</span>
+                </div>
+                ${item.adicionales && item.adicionales.length > 0 ? `
+                    <div class="text-[10px] text-gray-400 pl-4">
+                        + ${item.adicionales.map(a => `${a.name} ($${a.price.toLocaleString()})`).join(', ')}
+                    </div>
+                ` : ''}
+                ${includeNotes && item.instructions ? `<p class="text-[10px] italic text-gray-500 pl-4">"${item.instructions}"</p>` : ''}
+            `).join('');
+        }
+
         function createOrderCard(order) {
             const date = new Date(order.createdAt).toLocaleString('es-CO');
             const orderEl = document.createElement('div');
@@ -526,20 +557,7 @@
                     <div>
                         <h4 class="font-bold text-sm mb-2 uppercase text-gray-500 tracking-wider">Pedido</h4>
                         <div class="space-y-1">
-                            ${order.items.map(item => `
-                                <div class="flex justify-between text-sm">
-                                    <span>${item.quantity}x ${item.name}</span>
-                                    <span>$${(item.price * item.quantity).toLocaleString()}</span>
-                                </div>
-                                ${item.adicionales && item.adicionales.length > 0 ? `
-                                    <div class="text-[10px] text-gray-400 pl-4">
-                                        + ${item.adicionales.map(a => {
-                                            let info = `${a.name} ($${a.price.toLocaleString()})`;
-                                            return info;
-                                        }).join(', ')}
-                                    </div>
-                                ` : ''}
-                            `).join('')}
+                            ${renderOrderItemLines(order.items)}
                         </div>
                         <div class="mt-3 pt-2 border-t border-[var(--light-shadow)] flex justify-between font-bold text-lg" style="color: var(--primary-color);">
                             <span>TOTAL</span>
@@ -587,21 +605,7 @@
                     <div class="neumorphic-input p-4 rounded-xl">
                         <h4 class="text-xs uppercase text-gray-500 mb-2">Productos</h4>
                         <div class="space-y-2">
-                            ${order.items.map(item => `
-                                <div class="flex justify-between text-sm border-b border-white/5 pb-1">
-                                    <span>${item.quantity}x ${item.name}</span>
-                                    <span>$${(item.price * item.quantity).toLocaleString()}</span>
-                                </div>
-                                ${item.adicionales && item.adicionales.length > 0 ? `
-                                    <div class="text-[10px] text-gray-400 pl-4">
-                                        ${item.adicionales.map(a => {
-                                            let info = `+ ${a.name} ($${a.price.toLocaleString()})`;
-                                            return info;
-                                        }).join('<br>')}
-                                    </div>
-                                ` : ''}
-                                ${item.instructions ? `<p class="text-[10px] italic text-gray-500 pl-4">"${item.instructions}"</p>` : ''}
-                            `).join('')}
+                            ${renderOrderItemLines(order.items, true)}
                         </div>
                         <div class="mt-4 pt-2 border-t border-[var(--light-shadow)] space-y-1">
                             <div class="flex justify-between text-xs text-gray-400"><span>Subtotal</span><span>$${order.subtotal.toLocaleString()}</span></div>
