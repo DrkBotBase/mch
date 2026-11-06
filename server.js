@@ -77,6 +77,60 @@ function getAllMenuItems(categories) {
     ]);
 }
 
+async function validateOrderItems(items) {
+    if (!Array.isArray(items) || items.length === 0) {
+        throw new Error('El pedido no contiene productos.');
+    }
+    const [categories, promotions] = await Promise.all([
+        MenuCategory.find({ active: true }),
+        Promotion.find({
+            active: true,
+            $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: new Date() } }]
+        })
+    ]);
+    const menuItems = getAllMenuItems(categories).filter(item => item.active);
+    const validatedItems = [];
+
+    for (const submittedItem of items) {
+        const quantity = Number(submittedItem.quantity);
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+            throw new Error('La cantidad de un producto no es válida.');
+        }
+        const productId = submittedItem.productId ?? submittedItem.id;
+        let product = menuItems.find(item => String(item.id) === String(productId));
+        if (!product && mongoose.Types.ObjectId.isValid(String(productId))) {
+            product = promotions.find(promo => String(promo._id) === String(productId));
+        }
+        if (!product) throw new Error(`El producto "${submittedItem.name || 'seleccionado'}" ya no está disponible.`);
+        if (submittedItem.name && String(submittedItem.name).trim() !== product.name) {
+            throw new Error('Los datos de un producto no coinciden con el menú actual.');
+        }
+
+        const requestedAdditions = Array.isArray(submittedItem.adicionales) ? submittedItem.adicionales : [];
+        const validatedAdditions = [];
+        const additionNames = new Set();
+        for (const requestedAddition of requestedAdditions) {
+            const additionName = String(requestedAddition.name || '').trim();
+            if (additionNames.has(additionName)) throw new Error(`La variante "${additionName}" está repetida.`);
+            additionNames.add(additionName);
+            const addition = (product.adicionales || []).find(ad => ad.name === additionName);
+            if (!addition) throw new Error(`La variante de "${product.name}" ya no es válida.`);
+            validatedAdditions.push({ name: addition.name, price: Number(addition.price) || 0 });
+        }
+
+        const unitPrice = (Number(product.basePrice) || 0) + validatedAdditions.reduce((sum, addition) => sum + addition.price, 0);
+        validatedItems.push({
+            productId: product.id || product._id,
+            name: product.name,
+            quantity,
+            price: unitPrice,
+            instructions: String(submittedItem.instructions || '').trim().slice(0, 500),
+            adicionales: validatedAdditions
+        });
+    }
+    return validatedItems;
+}
+
 webpush.setVapidDetails(
     process.env.VAPID_EMAIL || 'mailto:admin@example.com',
     process.env.VAPID_PUBLIC_KEY,
@@ -349,7 +403,7 @@ app.put('/api/promotions/:id', isAuthenticated, async (req, res) => {
             delete promoData.expiresAt;
         }
 
-        const updatedPromo = await Promotion.findByIdAndUpdate(req.params.id, promoData, { new: true });
+        const updatedPromo = await Promotion.findByIdAndUpdate(req.params.id, promoData, { returnDocument: 'after' });
         res.json(updatedPromo);
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error updating promotion' });
@@ -443,7 +497,7 @@ app.put('/api/admin/clients/:id', isAuthenticated, async (req, res) => {
         const user = await User.findByIdAndUpdate(
             req.params.id,
             { $set: { name: String(name).trim(), phone: String(phone).trim(), address: String(address).trim() } },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         );
         if (!user) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
         res.json({ success: true, user });
@@ -457,21 +511,57 @@ app.put('/api/admin/clients/:id', isAuthenticated, async (req, res) => {
 
 app.put('/api/admin/orders/:id', isAuthenticated, async (req, res) => {
     try {
-        const { status, shippingCost } = req.body;
+        const { status, shippingCost, items } = req.body;
         const order = await Order.findById(req.params.id);
-        if (!order) return res.status(404).json({ success: false });
+        if (!order) return res.status(404).json({ success: false, message: 'Orden no encontrada.' });
 
-        const updateData = {};
-        if (status) updateData.status = status;
-        if (shippingCost !== undefined) {
-            updateData.shippingCost = parseFloat(shippingCost);
-            updateData.total = order.subtotal + parseFloat(shippingCost);
+        if (items !== undefined && order.status !== 'pending') {
+            return res.status(400).json({ success: false, message: 'Solo se pueden editar órdenes pendientes.' });
+        }
+        if (items !== undefined && Array.isArray(items) && items.length === 0) {
+            await Order.findByIdAndDelete(req.params.id);
+            if (order.clientPhone) {
+                await User.findOneAndUpdate(
+                    { phone: order.clientPhone },
+                    { $inc: { orderCount: -1, totalSpent: -(Number(order.total) || 0) } }
+                );
+            }
+            return res.json({ success: true, deleted: true });
         }
 
-        await Order.findByIdAndUpdate(req.params.id, updateData);
-        res.json({ success: true });
+        const updateData = {};
+        if (status && ['pending', 'completed', 'cancelled'].includes(status)) updateData.status = status;
+        if (items !== undefined) {
+            const validatedItems = await validateOrderItems(items);
+            const subtotal = validatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            const parsedShipping = shippingCost === undefined ? Number(order.shippingCost) || 0 : Number(shippingCost);
+            if (!Number.isFinite(parsedShipping) || parsedShipping < 0) {
+                return res.status(400).json({ success: false, message: 'El costo de envío no es válido.' });
+            }
+            updateData.items = validatedItems;
+            updateData.subtotal = subtotal;
+            updateData.shippingCost = parsedShipping;
+            updateData.total = subtotal + parsedShipping;
+        } else if (shippingCost !== undefined) {
+            const parsedShipping = Number(shippingCost);
+            if (!Number.isFinite(parsedShipping) || parsedShipping < 0) {
+                return res.status(400).json({ success: false, message: 'El costo de envío no es válido.' });
+            }
+            updateData.shippingCost = parsedShipping;
+            updateData.total = order.subtotal + parsedShipping;
+        }
+
+        const updatedOrder = await Order.findByIdAndUpdate(req.params.id, updateData, { returnDocument: 'after', runValidators: true });
+        if (items !== undefined && order.clientPhone) {
+            const totalDifference = (Number(updatedOrder.total) || 0) - (Number(order.total) || 0);
+            if (totalDifference !== 0) {
+                await User.findOneAndUpdate({ phone: order.clientPhone }, { $inc: { totalSpent: totalDifference } });
+            }
+        }
+        res.json({ success: true, order: updatedOrder });
     } catch (error) {
-        res.status(500).json({ success: false });
+        console.error('Error updating order:', error);
+        res.status(400).json({ success: false, message: error.message || 'Error al actualizar la orden.' });
     }
 });
 
@@ -510,7 +600,7 @@ app.post('/api/notifications/subscribe', async (req, res) => {
         const result = await Subscription.findOneAndUpdate(
             filter,
             update,
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
         );
         
         res.status(201).json({ success: true });
@@ -581,16 +671,106 @@ app.post('/api/notifications/send', isAuthenticated, async (req, res) => {
 
 app.post('/api/orders', async (req, res) => {
     try {
-        const { clientName, clientPhone, clientAddress, items, total, comments } = req.body;
+        const { clientName, clientPhone, clientAddress, items, comments, paymentMethod, shippingZoneName } = req.body;
+        const cleanName = String(clientName || '').trim();
+        const cleanPhone = String(clientPhone || '').trim();
+        const cleanAddress = String(clientAddress || '').trim();
+        const allowedPaymentMethods = ['efectivo', 'transferencia', 'multipago'];
 
-        if (clientPhone) {
-            const orderTotal = total || 0;
+        if (!cleanName || !cleanPhone || !cleanAddress) {
+            return res.status(400).json({ success: false, message: 'Completa los datos del cliente.' });
+        }
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ success: false, message: 'El pedido no contiene productos.' });
+        }
+        if (!allowedPaymentMethods.includes(paymentMethod)) {
+            return res.status(400).json({ success: false, message: 'Método de pago no válido.' });
+        }
+
+        const [categories, promotions, restaurantInfo] = await Promise.all([
+            MenuCategory.find({ active: true }),
+            Promotion.find({
+                active: true,
+                $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: new Date() } }]
+            }),
+            RestaurantInfo.findOne()
+        ]);
+        const menuItems = getAllMenuItems(categories).filter(item => item.active);
+        const shippingZone = (restaurantInfo?.shippingZones || []).find(zone => zone.name === shippingZoneName);
+        if (!shippingZone) {
+            return res.status(400).json({ success: false, message: 'La zona de envío no es válida. Actualiza el menú e inténtalo nuevamente.' });
+        }
+
+        const validatedItems = [];
+        for (const submittedItem of items) {
+            const quantity = Number(submittedItem.quantity);
+            if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+                return res.status(400).json({ success: false, message: 'La cantidad de un producto no es válida.' });
+            }
+
+            const productId = submittedItem.productId ?? submittedItem.id;
+            let product = menuItems.find(item => String(item.id) === String(productId));
+            if (!product && mongoose.Types.ObjectId.isValid(String(productId))) {
+                product = promotions.find(promo => String(promo._id) === String(productId));
+            }
+            if (!product) {
+                return res.status(400).json({ success: false, message: `El producto "${submittedItem.name || 'seleccionado'}" ya no está disponible.` });
+            }
+            if (submittedItem.name && String(submittedItem.name).trim() !== product.name) {
+                return res.status(400).json({ success: false, message: 'Los datos de un producto no coinciden con el menú actual.' });
+            }
+
+            const requestedAdditions = Array.isArray(submittedItem.adicionales) ? submittedItem.adicionales : [];
+            const validatedAdditions = [];
+            const additionNames = new Set();
+            for (const requestedAddition of requestedAdditions) {
+                const additionName = String(requestedAddition.name || '').trim();
+                if (additionNames.has(additionName)) {
+                    return res.status(400).json({ success: false, message: `La variante "${additionName}" está repetida.` });
+                }
+                additionNames.add(additionName);
+                const addition = (product.adicionales || []).find(ad => ad.name === additionName);
+                if (!addition) {
+                    return res.status(400).json({ success: false, message: `La variante de "${product.name}" ya no es válida.` });
+                }
+                validatedAdditions.push({ name: addition.name, price: Number(addition.price) || 0 });
+            }
+
+            const unitPrice = (Number(product.basePrice) || 0) + validatedAdditions.reduce((sum, addition) => sum + addition.price, 0);
+            validatedItems.push({
+                productId: product.id || product._id,
+                name: product.name,
+                quantity,
+                price: unitPrice,
+                instructions: String(submittedItem.instructions || '').trim().slice(0, 500),
+                adicionales: validatedAdditions
+            });
+        }
+
+        const subtotal = validatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const shippingCost = Number(shippingZone.price) || 0;
+        const orderTotal = subtotal + shippingCost;
+        const safeOrderData = {
+            clientName: cleanName,
+            clientPhone: cleanPhone,
+            clientAddress: cleanAddress,
+            items: validatedItems,
+            subtotal,
+            shippingCost,
+            total: orderTotal,
+            paymentMethod,
+            cashAmount: Number(req.body.cashAmount) || 0,
+            transferAmount: Number(req.body.transferAmount) || 0,
+            comments: String(comments || '').trim().slice(0, 1000)
+        };
+
+        if (cleanPhone) {
             await User.findOneAndUpdate(
-                { phone: clientPhone },
+                { phone: cleanPhone },
                 { 
                     $setOnInsert: { 
-                        name: clientName, 
-                        address: clientAddress 
+                        name: cleanName,
+                        address: cleanAddress
                     },
                     $inc: { 
                         orderCount: 1,
@@ -609,10 +789,10 @@ app.post('/api/orders', async (req, res) => {
         );
 
         const shortId = `mc${counter.seq}`;
-        const newOrder = new Order({ ...req.body, shortId });
+        const newOrder = new Order({ ...safeOrderData, shortId });
         await newOrder.save();
 
-        res.status(201).json({ success: true, message: 'Order saved', orderId: newOrder._id, shortId });
+        res.status(201).json({ success: true, message: 'Order saved', orderId: newOrder._id, shortId, order: newOrder });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Error saving order' });

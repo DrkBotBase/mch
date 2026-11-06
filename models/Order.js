@@ -6,6 +6,7 @@ const OrderSchema = new mongoose.Schema({
     clientAddress: { type: String, required: true },
     shortId: { type: String, unique: true },
     items: [{
+        productId: mongoose.Schema.Types.Mixed,
         name: String,
         quantity: Number,
         price: Number,

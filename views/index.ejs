@@ -1379,16 +1379,14 @@
                     clientName: document.getElementById('client-name').value.trim(),
                     clientPhone: document.getElementById('client-phone').value.trim(),
                     clientAddress: document.getElementById('client-address').value.trim(),
+                    shippingZoneName: getCurrentZoneInfo().name,
                     items: cart.map(item => ({
+                        productId: item.id,
                         name: item.name,
                         quantity: item.quantity,
-                        price: item.price,
                         instructions: item.instructions,
                         adicionales: item.adicionales || []
                     })),
-                    subtotal: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-                    shippingCost: calculateShippingCost(),
-                    total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + calculateShippingCost(),
                     paymentMethod: paymentMethod,
                     cashAmount: (paymentMethod === 'multipago' ? document.getElementById('multipago-cash').value.trim() : document.getElementById('payment-cash-amount').value.trim()) || 0,
                     transferAmount: (paymentMethod === 'multipago' ? document.getElementById('multipago-transfer').value.trim() : 0) || 0,
@@ -1423,7 +1421,8 @@
 
                         cartModal.shippingZoneSelect.value = "";
                     } else {
-                        showToast('Error al guardar el pedido. Por favor intenta de nuevo.', 'error');
+                        const errorData = await response.json().catch(() => ({}));
+                        showToast(errorData.message || 'Error al guardar el pedido. Por favor intenta de nuevo.', 'error');
                     }
                 } catch (error) {
                     console.error('Error saving order:', error);
