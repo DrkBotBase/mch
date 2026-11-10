@@ -164,6 +164,24 @@
         .prompt-glass {
             background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%);
         }
+        .announcement-banner {
+            overflow: hidden;
+            white-space: nowrap;
+            background: var(--primary-color);
+            color: #000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        }
+        .announcement-track {
+            display: inline-block;
+            min-width: 100%;
+            padding: 0.65rem 0;
+            animation: announcement-scroll 18s linear infinite;
+        }
+        .announcement-track span { display: inline-block; padding-right: 4rem; font-weight: 800; }
+        @keyframes announcement-scroll {
+            from { transform: translateX(100%); }
+            to { transform: translateX(-100%); }
+        }
 
         /* Estilos Toast Notification */
         #toast-container {
@@ -317,6 +335,10 @@
         </div>
     </section>
 
+    <div id="announcement-banner" class="announcement-banner hidden" aria-live="polite">
+        <div class="announcement-track"><span id="announcement-message"></span><span id="announcement-message-copy"></span></div>
+    </div>
+
     <main class="container mx-auto p-4">
         <div id="promotions-section" class="mb-8 hidden">
             <h2 class="text-xl font-bold mb-4 uppercase tracking-wider accent-text">Promociones del Día</h2>
@@ -438,7 +460,9 @@
         
         <div id="cart-summary" class="p-6 border-t border-[var(--dark-shadow)] space-y-2 hidden rounded-b-2xl">
             <div class="flex justify-between text-sm"><span>Subtotal Productos</span><span id="cart-subtotal" class="font-semibold">$0</span></div>
+            <div id="cart-product-discount-row" class="flex justify-between text-sm text-green-400 hidden"><span>Descuento productos</span><span id="cart-product-discount" class="font-semibold">-$0</span></div>
             <div class="flex justify-between text-sm text-gray-400"><span>Domicilio Fijo</span><span id="cart-shipping" class="font-semibold">$0</span></div>
+            <div id="cart-shipping-discount-row" class="flex justify-between text-sm text-green-400 hidden"><span>Descuento domicilio</span><span id="cart-shipping-discount" class="font-semibold">-$0</span></div>
             <div class="flex justify-between text-xl font-bold border-t border-[var(--light-shadow)] pt-2 mt-2"><span>Total a Pagar</span><span id="cart-total" class="accent-text">$0</span></div>
             <button id="confirm-order-btn" class="w-full mt-4 neumorphic-button text-black font-black py-4 px-6 rounded-xl text-lg hover:brightness-110 active:scale-95 transition" style="background-color: var(--primary-color);">Enviar Pedido por WhatsApp</button>
         </div>
@@ -590,6 +614,8 @@
             badge: document.getElementById('cart-badge'), 
             subtotal: document.getElementById('cart-subtotal'), 
             shipping: document.getElementById('cart-shipping'), 
+            productDiscount: document.getElementById('cart-product-discount'),
+            shippingDiscount: document.getElementById('cart-shipping-discount'),
             total: document.getElementById('cart-total'), 
             formError: document.getElementById('form-error-msg'), 
             shippingZoneSelect: document.getElementById('shipping-zone'), 
@@ -619,6 +645,32 @@
         function calculateShippingCost() {
             const zoneInfo = getCurrentZoneInfo();
             return zoneInfo.price;
+        }
+
+        function calculateClientDiscount(rule, amount) {
+            if (!rule || !rule.enabled || amount <= 0) return 0;
+            const value = Math.max(0, Number(rule.value) || 0);
+            const discount = rule.type === 'fixed' ? value : amount * Math.min(value, 100) / 100;
+            return Math.min(amount, discount);
+        }
+
+        function calculateCartTotals() {
+            const discounts = window.restaurantData?.config?.discounts || {};
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const shippingCost = calculateShippingCost();
+            const productDiscount = calculateClientDiscount(discounts.products, subtotal);
+            const shippingDiscount = calculateClientDiscount(discounts.shipping, shippingCost);
+            return { subtotal, shippingCost, productDiscount, shippingDiscount, total: subtotal - productDiscount + shippingCost - shippingDiscount };
+        }
+
+        function renderAnnouncement() {
+            const announcement = window.restaurantData?.config?.announcement || {};
+            const banner = document.getElementById('announcement-banner');
+            const message = String(announcement.message || '').trim();
+            if (!announcement.enabled || !message) return;
+            document.getElementById('announcement-message').textContent = message;
+            document.getElementById('announcement-message-copy').textContent = message;
+            banner.classList.remove('hidden');
         }
         
         function initializeApp(data) {
@@ -669,6 +721,7 @@
             populateShippingZones();
             populateHoursModal();
             loadClientData();
+            renderAnnouncement();
             
             const urlParams = new URLSearchParams(window.location.search);
             const productId = urlParams.get('item');
@@ -1105,15 +1158,16 @@
         function updateCartSummary() {
             const formatCOP = value => `$${Intl.NumberFormat('es-CO').format(value)}`;
             
-            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
             const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            const totals = calculateCartTotals();
             
-            const shippingCost = calculateShippingCost();
-            const total = subtotal + shippingCost;
-            
-            cartModal.subtotal.textContent = formatCOP(subtotal);
-            cartModal.shipping.textContent = formatCOP(shippingCost);
-            cartModal.total.textContent = formatCOP(total);
+            cartModal.subtotal.textContent = formatCOP(totals.subtotal);
+            cartModal.shipping.textContent = formatCOP(totals.shippingCost);
+            cartModal.total.textContent = formatCOP(totals.total);
+            cartModal.productDiscount.textContent = `-${formatCOP(totals.productDiscount)}`;
+            cartModal.shippingDiscount.textContent = `-${formatCOP(totals.shippingDiscount)}`;
+            document.getElementById('cart-product-discount-row').classList.toggle('hidden', totals.productDiscount <= 0);
+            document.getElementById('cart-shipping-discount-row').classList.toggle('hidden', totals.shippingDiscount <= 0);
             cartModal.badge.textContent = totalItems;
             cartModal.badge.classList.toggle('hidden', totalItems === 0);
         }
@@ -1207,10 +1261,11 @@
           const comments = document.getElementById('order-comments').value.trim();  
           
           const zoneInfo = getCurrentZoneInfo();
-          const shippingCost = calculateShippingCost();
+          const cartTotals = calculateCartTotals();
+          const shippingCost = cartTotals.shippingCost;
           const shippingZoneName = zoneInfo.name;
-          const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);  
-          const total = subtotal + shippingCost;  
+          const subtotal = cartTotals.subtotal;
+          const total = cartTotals.total;
       
           let message = `📦 *NUEVO PEDIDO - ${window.restaurantData.config.nombre}* \n\n`;
           message += `👤 *Cliente:* ${clientName}\n📞 *Teléfono:* ${clientPhone}\n🏠 *Dirección:* ${clientAddress}\n`;
@@ -1230,7 +1285,9 @@
           });
       
           message += `\n💰 *Subtotal:* $${subtotal.toLocaleString()}\n`;
+          if (cartTotals.productDiscount > 0) message += `🏷️ *Descuento productos:* -$${cartTotals.productDiscount.toLocaleString()}\n`;
           message += `🚕 *Domicilio Fijo:* $${shippingCost.toLocaleString()}\n`;
+          if (cartTotals.shippingDiscount > 0) message += `🏷️ *Descuento domicilio:* -$${cartTotals.shippingDiscount.toLocaleString()}\n`;
           message += `💵 *Total a pagar:* *$${total.toLocaleString()}*\n`;
           message += `💳 *Método de pago:* ${paymentMethod.toUpperCase()}\n`;
       
@@ -1306,9 +1363,7 @@
 
                 const paymentMethod = document.querySelector('input[name="payment"]:checked');
                 if (paymentMethod && paymentMethod.value === 'multipago') {
-                    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                    const shippingCost = calculateShippingCost();
-                    const total = subtotal + shippingCost;
+                    const total = calculateCartTotals().total;
                     
                     const currentCash = parseFloat(multiCashInput.value) || 0;
                     if (multiCashInput.value !== "" || multiTransferInput.value !== "") {
@@ -1324,9 +1379,7 @@
             });
 
             multiCashInput.addEventListener('input', () => {
-                const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                const shippingCost = calculateShippingCost();
-                const total = subtotal + shippingCost;
+                const total = calculateCartTotals().total;
                 const cashVal = parseFloat(multiCashInput.value) || 0;
                 
                 if (cashVal <= total) {
@@ -1337,9 +1390,7 @@
             });
 
             multiTransferInput.addEventListener('input', () => {
-                const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                const shippingCost = calculateShippingCost();
-                const total = subtotal + shippingCost;
+                const total = calculateCartTotals().total;
                 const transferVal = parseFloat(multiTransferInput.value) || 0;
                 
                 if (transferVal <= total) {

@@ -15,7 +15,23 @@ const restaurantInfoSchema = new mongoose.Schema({
             light: { type: String, default: '#dbd7c5' },
             dark: { type: String, default: '#cac7b5' }
         },
-        taxRate: { type: Number, default: 0 }
+        taxRate: { type: Number, default: 0 },
+        discounts: {
+            products: {
+                enabled: { type: Boolean, default: false },
+                type: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
+                value: { type: Number, default: 0, min: 0 }
+            },
+            shipping: {
+                enabled: { type: Boolean, default: false },
+                type: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
+                value: { type: Number, default: 0, min: 0 }
+            }
+        },
+        announcement: {
+            enabled: { type: Boolean, default: false },
+            message: { type: String, default: '' }
+        }
     },
     schedule: [
         {

@@ -246,6 +246,32 @@
                     </div>
                 </form>
             </section>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <section class="neumorphic-flat rounded-2xl p-6">
+                    <h2 class="text-xl font-bold mb-2">Descuentos</h2>
+                    <p class="text-xs text-gray-500 mb-5">Se aplican automáticamente a nuevos pedidos y se guardan en cada orden.</p>
+                    <form id="discount-form" class="space-y-5">
+                        <div class="neumorphic-pressed rounded-xl p-4 space-y-3">
+                            <label class="flex items-center gap-2 font-bold text-sm"><input type="checkbox" id="discount-products-enabled" class="w-4 h-4"> Descuento en productos</label>
+                            <div class="grid grid-cols-2 gap-3"><select id="discount-products-type" class="neumorphic-input p-3 rounded-lg text-sm"><option value="percentage">Porcentaje (%)</option><option value="fixed">Valor fijo ($)</option></select><input type="number" min="0" id="discount-products-value" class="neumorphic-input p-3 rounded-lg text-sm" placeholder="Valor"></div>
+                        </div>
+                        <div class="neumorphic-pressed rounded-xl p-4 space-y-3">
+                            <label class="flex items-center gap-2 font-bold text-sm"><input type="checkbox" id="discount-shipping-enabled" class="w-4 h-4"> Descuento en domicilio</label>
+                            <div class="grid grid-cols-2 gap-3"><select id="discount-shipping-type" class="neumorphic-input p-3 rounded-lg text-sm"><option value="percentage">Porcentaje (%)</option><option value="fixed">Valor fijo ($)</option></select><input type="number" min="0" id="discount-shipping-value" class="neumorphic-input p-3 rounded-lg text-sm" placeholder="Valor"></div>
+                        </div>
+                        <button type="submit" class="w-full neumorphic-button py-3 rounded-xl font-bold" style="background-color: var(--primary-color); color: black;">Guardar Descuentos</button>
+                    </form>
+                </section>
+                <section class="neumorphic-flat rounded-2xl p-6">
+                    <h2 class="text-xl font-bold mb-2">Banner desplazable del menú</h2>
+                    <p class="text-xs text-gray-500 mb-5">El mensaje se moverá de un lado al otro en la página pública.</p>
+                    <form id="announcement-form" class="space-y-4">
+                        <label class="flex items-center gap-2 font-bold text-sm"><input type="checkbox" id="announcement-enabled" class="w-4 h-4"> Mostrar banner</label>
+                        <textarea id="announcement-message" maxlength="240" class="w-full neumorphic-input p-3 rounded-lg h-24 text-sm" placeholder="Ej: ¡Domicilios gratis todo el fin de semana!"></textarea>
+                        <button type="submit" class="w-full neumorphic-button py-3 rounded-xl font-bold" style="background-color: var(--primary-color); color: black;">Guardar Banner</button>
+                    </form>
+                </section>
+            </div>
         </div>
 
         <div id="content-menu" class="tab-content hidden">
@@ -394,6 +420,8 @@
             loadOrders();
             renderSchedule();
             renderShippingZones();
+            renderDiscountSettings();
+            renderAnnouncementSettings();
             
             setInterval(loadOrders, 30000);
         }
@@ -563,6 +591,7 @@
                             <span>TOTAL</span>
                             <span>$${order.total.toLocaleString()}</span>
                         </div>
+                        ${(order.discountTotal || 0) > 0 ? `<p class="text-xs text-green-500 mt-2">Descuentos aplicados: -$${Number(order.discountTotal).toLocaleString()}</p>` : ''}
                     </div>
                 </div>
             `;
@@ -637,8 +666,20 @@
                 subtotal += ((Number(product.basePrice) || 0) + additions) * quantity;
             });
             const shipping = Number(document.getElementById('edit-shipping-cost')?.value) || 0;
+            const discounts = restaurantInfo.config.discounts || {};
+            const discountAmount = (rule, amount) => {
+                if (!rule?.enabled || amount <= 0) return 0;
+                const value = Math.max(0, Number(rule.value) || 0);
+                return Math.min(amount, rule.type === 'fixed' ? value : amount * Math.min(value, 100) / 100);
+            };
+            const productDiscount = discountAmount(discounts.products, subtotal);
+            const shippingDiscount = discountAmount(discounts.shipping, shipping);
             document.getElementById('edit-order-subtotal').textContent = `$${subtotal.toLocaleString()}`;
-            document.getElementById('edit-order-total').textContent = `$${(subtotal + shipping).toLocaleString()}`;
+            document.getElementById('edit-order-product-discount').textContent = `-$${productDiscount.toLocaleString()}`;
+            document.getElementById('edit-order-shipping-discount').textContent = `-$${shippingDiscount.toLocaleString()}`;
+            document.getElementById('edit-order-product-discount-row').classList.toggle('hidden', productDiscount <= 0);
+            document.getElementById('edit-order-shipping-discount-row').classList.toggle('hidden', shippingDiscount <= 0);
+            document.getElementById('edit-order-total').textContent = `$${(subtotal - productDiscount + shipping - shippingDiscount).toLocaleString()}`;
         }
 
         function openOrderDetails(id) {
@@ -654,7 +695,7 @@
                 <div class="space-y-4">
                     <div class="neumorphic-input p-4 rounded-xl"><h4 class="text-xs uppercase text-gray-500 mb-2">Cliente</h4><p class="font-bold text-sm">${escapeOrderHtml(order.clientName)}</p><p class="text-sm">${escapeOrderHtml(order.clientPhone)}</p><p class="text-xs text-gray-400">${escapeOrderHtml(order.clientAddress)}</p></div>
                     <div class="neumorphic-input p-4 rounded-xl"><div class="flex justify-between items-center mb-3"><h4 class="text-xs uppercase text-gray-500">Productos</h4><button type="button" id="add-order-product" class="neumorphic-button px-3 py-2 rounded-lg text-xs font-bold"><i data-lucide="plus" class="w-3 h-3"></i> Agregar producto</button></div><div id="order-items-editor" class="space-y-3"></div></div>
-                    <div class="neumorphic-input p-4 rounded-xl space-y-2"><div class="flex justify-between text-sm"><span>Subtotal</span><strong id="edit-order-subtotal">$0</strong></div><div class="flex justify-between items-center text-sm"><span>Envío</span><input type="number" min="0" id="edit-shipping-cost" value="${Number(order.shippingCost) || 0}" class="neumorphic-input w-28 text-right p-2 rounded-lg text-sm"></div><div class="flex justify-between font-bold text-lg pt-2 border-t border-[var(--light-shadow)]"><span>TOTAL</span><strong id="edit-order-total" style="color: var(--primary-color);">$0</strong></div></div>
+                    <div class="neumorphic-input p-4 rounded-xl space-y-2"><div class="flex justify-between text-sm"><span>Subtotal</span><strong id="edit-order-subtotal">$0</strong></div><div id="edit-order-product-discount-row" class="hidden flex justify-between text-sm text-green-500"><span>Descuento productos</span><strong id="edit-order-product-discount">-$0</strong></div><div class="flex justify-between items-center text-sm"><span>Envío</span><input type="number" min="0" id="edit-shipping-cost" value="${Number(order.shippingCost) || 0}" class="neumorphic-input w-28 text-right p-2 rounded-lg text-sm"></div><div id="edit-order-shipping-discount-row" class="hidden flex justify-between text-sm text-green-500"><span>Descuento domicilio</span><strong id="edit-order-shipping-discount">-$0</strong></div><div class="flex justify-between font-bold text-lg pt-2 border-t border-[var(--light-shadow)]"><span>TOTAL</span><strong id="edit-order-total" style="color: var(--primary-color);">$0</strong></div></div>
                     <div class="flex flex-wrap gap-3"><button onclick="saveOrderDetails('${order._id}');" class="flex-grow neumorphic-button py-3 rounded-xl font-bold" style="background-color: var(--primary-color); color: black;">Guardar Cambios</button><button type="button" onclick="closeModal()" class="flex-grow neumorphic-button py-3 rounded-xl font-bold">Cancelar</button></div>
                 </div>`;
             document.getElementById('modal-overlay').classList.remove('hidden');
@@ -759,6 +800,41 @@
             });
 
             if (res.ok) showToast('Configuración guardada.', 'success');
+        };
+
+        function renderDiscountSettings() {
+            const discounts = restaurantInfo.config.discounts || {};
+            const products = discounts.products || {};
+            const shipping = discounts.shipping || {};
+            document.getElementById('discount-products-enabled').checked = Boolean(products.enabled);
+            document.getElementById('discount-products-type').value = products.type || 'percentage';
+            document.getElementById('discount-products-value').value = products.value || 0;
+            document.getElementById('discount-shipping-enabled').checked = Boolean(shipping.enabled);
+            document.getElementById('discount-shipping-type').value = shipping.type || 'percentage';
+            document.getElementById('discount-shipping-value').value = shipping.value || 0;
+        }
+
+        function renderAnnouncementSettings() {
+            const announcement = restaurantInfo.config.announcement || {};
+            document.getElementById('announcement-enabled').checked = Boolean(announcement.enabled);
+            document.getElementById('announcement-message').value = announcement.message || '';
+        }
+
+        document.getElementById('discount-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = { config: { discounts: {
+                products: { enabled: document.getElementById('discount-products-enabled').checked, type: document.getElementById('discount-products-type').value, value: Math.max(0, Number(document.getElementById('discount-products-value').value) || 0) },
+                shipping: { enabled: document.getElementById('discount-shipping-enabled').checked, type: document.getElementById('discount-shipping-type').value, value: Math.max(0, Number(document.getElementById('discount-shipping-value').value) || 0) }
+            } } };
+            const res = await fetch('/api/restaurant-info', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            if (res.ok) showToast('Descuentos guardados.', 'success');
+        };
+
+        document.getElementById('announcement-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = { config: { announcement: { enabled: document.getElementById('announcement-enabled').checked, message: document.getElementById('announcement-message').value.trim() } } };
+            const res = await fetch('/api/restaurant-info', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            if (res.ok) showToast('Banner guardado.', 'success');
         };
 
         // --- Menú ---

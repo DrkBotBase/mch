@@ -131,6 +131,29 @@ async function validateOrderItems(items) {
     return validatedItems;
 }
 
+function calculateDiscount(rule, amount) {
+    if (!rule || !rule.enabled || amount <= 0) return 0;
+    const value = Math.max(0, Number(rule.value) || 0);
+    const discount = rule.type === 'fixed' ? value : amount * Math.min(value, 100) / 100;
+    return Math.min(amount, discount);
+}
+
+function calculateOrderTotals(items, shippingCost, discounts = {}) {
+    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const productDiscount = calculateDiscount(discounts.products, subtotal);
+    const shippingDiscount = calculateDiscount(discounts.shipping, shippingCost);
+    const discountedSubtotal = subtotal - productDiscount;
+    const discountedShipping = shippingCost - shippingDiscount;
+    return {
+        subtotal,
+        shippingCost,
+        productDiscount,
+        shippingDiscount,
+        discountTotal: productDiscount + shippingDiscount,
+        total: discountedSubtotal + discountedShipping
+    };
+}
+
 webpush.setVapidDetails(
     process.env.VAPID_EMAIL || 'mailto:admin@example.com',
     process.env.VAPID_PUBLIC_KEY,
@@ -425,7 +448,16 @@ app.get('/api/restaurant-info', async (req, res) => {
 
 app.post('/api/restaurant-info', isAuthenticated, async (req, res) => {
     try {
-        await RestaurantInfo.findOneAndUpdate({}, req.body, { upsert: true });
+        const update = { ...req.body };
+        const set = {};
+        if (req.body.config && typeof req.body.config === 'object') {
+            Object.entries(req.body.config).forEach(([key, value]) => {
+                set[`config.${key}`] = value;
+            });
+            delete update.config;
+        }
+        if (Object.keys(set).length > 0) update.$set = { ...(update.$set || {}), ...set };
+        await RestaurantInfo.findOneAndUpdate({}, update, { upsert: true });
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false });
@@ -533,22 +565,20 @@ app.put('/api/admin/orders/:id', isAuthenticated, async (req, res) => {
         if (status && ['pending', 'completed', 'cancelled'].includes(status)) updateData.status = status;
         if (items !== undefined) {
             const validatedItems = await validateOrderItems(items);
-            const subtotal = validatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
             const parsedShipping = shippingCost === undefined ? Number(order.shippingCost) || 0 : Number(shippingCost);
             if (!Number.isFinite(parsedShipping) || parsedShipping < 0) {
                 return res.status(400).json({ success: false, message: 'El costo de envío no es válido.' });
             }
+            const totals = calculateOrderTotals(validatedItems, parsedShipping, (await RestaurantInfo.findOne())?.config?.discounts);
             updateData.items = validatedItems;
-            updateData.subtotal = subtotal;
-            updateData.shippingCost = parsedShipping;
-            updateData.total = subtotal + parsedShipping;
+            Object.assign(updateData, totals);
         } else if (shippingCost !== undefined) {
             const parsedShipping = Number(shippingCost);
             if (!Number.isFinite(parsedShipping) || parsedShipping < 0) {
                 return res.status(400).json({ success: false, message: 'El costo de envío no es válido.' });
             }
-            updateData.shippingCost = parsedShipping;
-            updateData.total = order.subtotal + parsedShipping;
+            const totals = calculateOrderTotals(order.items, parsedShipping, (await RestaurantInfo.findOne())?.config?.discounts);
+            Object.assign(updateData, totals);
         }
 
         const updatedOrder = await Order.findByIdAndUpdate(req.params.id, updateData, { returnDocument: 'after', runValidators: true });
@@ -747,16 +777,19 @@ app.post('/api/orders', async (req, res) => {
             });
         }
 
-        const subtotal = validatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
         const shippingCost = Number(shippingZone.price) || 0;
-        const orderTotal = subtotal + shippingCost;
+        const totals = calculateOrderTotals(validatedItems, shippingCost, restaurantInfo?.config?.discounts);
+        const orderTotal = totals.total;
         const safeOrderData = {
             clientName: cleanName,
             clientPhone: cleanPhone,
             clientAddress: cleanAddress,
             items: validatedItems,
-            subtotal,
-            shippingCost,
+            subtotal: totals.subtotal,
+            shippingCost: totals.shippingCost,
+            productDiscount: totals.productDiscount,
+            shippingDiscount: totals.shippingDiscount,
+            discountTotal: totals.discountTotal,
             total: orderTotal,
             paymentMethod,
             cashAmount: Number(req.body.cashAmount) || 0,
